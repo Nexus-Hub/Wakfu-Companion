@@ -939,3 +939,10 @@ button.reset-btn:hover { background-color: #ff4d4d; border-color: #ff4d4d; }
     bottom: auto; top: 110%;
     border-color: transparent transparent var(--accent) transparent;
 }
+
+/* --- Force BMC Widget to Left --- */
+#bmc-wbtn {
+    right: auto !important;
+    left: 18px !important; /* Matches your x-margin */
+    z-index: 9999 !important;
+}
