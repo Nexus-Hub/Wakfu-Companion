@@ -1,5 +1,7 @@
 # Nexus Wakfu Companion
 
+https://wakfu-companion-production.up.railway.app/
+
 **Nexus Wakfu Companion** is a lightweight, browser-based overlay tool for *Wakfu*. It parses the game's `wakfu-chat.log` file in real-time to provide combat statistics, item tracking, chat translation, and utility information without requiring external software installation.
 
 ## Key Features
