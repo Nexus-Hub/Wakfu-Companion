@@ -1571,6 +1571,7 @@ const classSpells = {
   iop: {
     en: [
       "Sword of Iop",
+      "Lost",
       "Thunderbolt",
       "Judgment",
       "Super Iop Punch",
@@ -1614,6 +1615,8 @@ const classSpells = {
     ],
     fr: [
       "Épée de Iop",
+      "Prdue",
+      "Perdu",
       "Fulgur",
       "Jugement",
       "Super Punch Iop",
@@ -1658,6 +1661,8 @@ const classSpells = {
     pt: [
       "Espada de Yopuka",
       "Fulgur",
+      "Perdida",
+      "Perdido",
       "Julgamento",
       "Super Soco de Iop",
       "Espada Celestial",
@@ -1701,6 +1706,8 @@ const classSpells = {
     es: [
       "Espada Yopuka",
       "Fulgur",
+      "Perdida",
+      "Perdido",
       "Sentencia",
       "Superpuño Yopuka",
       "Espada Celeste",
