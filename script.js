@@ -1,47 +1,52 @@
 // ==========================================
 // CONFIG & STATE
 // ==========================================
-let fileHandle, fileOffset = 0, isReading = false;
-let parseIntervalId = null, watchdogIntervalId = null;
+let fileHandle,
+  fileOffset = 0,
+  isReading = false;
+let parseIntervalId = null,
+  watchdogIntervalId = null;
 let pipWindow = null;
-let trackerViewMode = 'grid'; // Default to grid
+let trackerViewMode = "grid"; // Default to grid
 
 // Global function to handle the toggle and save state
-window.toggleIconVariant = function(playerName, imgEl) {
-    // 1. Toggle State
-    playerVariantState[playerName] = !playerVariantState[playerName];
-    
-    // 2. Get Class Name
-    const className = playerClasses[playerName];
-    if (!className) return;
+window.toggleIconVariant = function (playerName, imgEl) {
+  // 1. Toggle State
+  playerVariantState[playerName] = !playerVariantState[playerName];
 
-    // 3. Update Image Source Immediately
-    const newSrc = playerVariantState[playerName] ? `./img/classes/${className}-f.png` : `./img/classes/${className}.png`;
-    imgEl.src = newSrc;
-    
-    // 4. Clear Cache (So the next re-render generates the correct version)
-    delete playerIconCache[playerName];
+  // 2. Get Class Name
+  const className = playerClasses[playerName];
+  if (!className) return;
+
+  // 3. Update Image Source Immediately
+  const newSrc = playerVariantState[playerName]
+    ? `./img/classes/${className}-f.png`
+    : `./img/classes/${className}.png`;
+  imgEl.src = newSrc;
+
+  // 4. Clear Cache (So the next re-render generates the correct version)
+  delete playerIconCache[playerName];
 };
 
 // Helper to find elements in either the main document or the PiP document
 function getUI(id) {
-    if (pipWindow && pipWindow.document) {
-        const pipEl = pipWindow.document.getElementById(id);
-        if (pipEl) return pipEl;
-    }
-    return document.getElementById(id);
+  if (pipWindow && pipWindow.document) {
+    const pipEl = pipWindow.document.getElementById(id);
+    if (pipEl) return pipEl;
+  }
+  return document.getElementById(id);
 }
 
 // Combat State
 let fightData = {}; // Damage
-let healData = {};  // Healing
+let healData = {}; // Healing
 let armorData = {}; // Armor
 let playerClasses = {}; // Map player Name -> Class Icon Filename
 let playerIconCache = {}; // Cache for icon HTML strings to avoid re-calc
 let playerVariantState = {}; // Stores true/false for gender toggle
 let manualOverrides = {}; // Map player Name -> 'ally' | 'enemy'
-let activeMeterMode = 'damage'; // 'damage', 'healing', 'armor'
-let currentCaster = "Unknown"; 
+let activeMeterMode = "damage"; // 'damage', 'healing', 'armor'
+let currentCaster = "Unknown";
 let currentSpell = "Unknown Spell";
 let expandedPlayers = new Set();
 let isAutoResetOn = false;
@@ -54,85 +59,92 @@ let spellToClassMap = {};
 // Chat State
 const translationQueue = [];
 let isTranslating = false;
-const transConfig = { pt: true, fr: true, es: false, others: false, enabled: true };
-let currentChatFilter = 'all';
+const transConfig = {
+  pt: true,
+  fr: true,
+  es: false,
+  others: false,
+  enabled: true,
+};
+let currentChatFilter = "all";
 
 // Item Tracker State
-let trackedItems = []; 
+let trackedItems = [];
 
 // ELEMENTS
-const setupPanel = document.getElementById('setup-panel');
-const dropZone = document.getElementById('drop-zone');
-const activeFilename = document.getElementById('active-filename');
-const liveIndicator = document.getElementById('live-indicator');
-const chatList = document.getElementById('chat-list');
-const autoResetBtn = document.getElementById('autoResetToggle');
-const autoResetText = document.getElementById('autoResetText');
-const timerInput = document.getElementById('timerInput');
-const clearChatBtn = document.getElementById('clearChatBtn');
+const setupPanel = document.getElementById("setup-panel");
+const dropZone = document.getElementById("drop-zone");
+const activeFilename = document.getElementById("active-filename");
+const liveIndicator = document.getElementById("live-indicator");
+const chatList = document.getElementById("chat-list");
+const autoResetBtn = document.getElementById("autoResetToggle");
+const autoResetText = document.getElementById("autoResetText");
+const timerInput = document.getElementById("timerInput");
+const clearChatBtn = document.getElementById("clearChatBtn");
 
 // Setup Reconnect Elements
-const reconnectContainer = document.getElementById('reconnect-container');
-const reconnectBtn = document.getElementById('reconnect-btn');
-const newFileBtn = document.getElementById('new-file-btn');
-const prevFilenameEl = document.getElementById('prev-filename');
+const reconnectContainer = document.getElementById("reconnect-container");
+const reconnectBtn = document.getElementById("reconnect-btn");
+const newFileBtn = document.getElementById("new-file-btn");
+const prevFilenameEl = document.getElementById("prev-filename");
 
 // Copy Button Element
-const copyPathBtn = document.getElementById('copy-path-btn');
-const logPathEl = document.getElementById('log-path');
+const copyPathBtn = document.getElementById("copy-path-btn");
+const logPathEl = document.getElementById("log-path");
 
 // Item Tracker Elements
-const profSelect = document.getElementById('prof-select');
-const itemInput = document.getElementById('item-input');
-const itemDatalist = document.getElementById('item-datalist');
-const trackerList = document.getElementById('tracker-list');
+const profSelect = document.getElementById("prof-select");
+const itemInput = document.getElementById("item-input");
+const itemDatalist = document.getElementById("item-datalist");
+const trackerList = document.getElementById("tracker-list");
 let dragSrcIndex = null;
 
 let activeTooltip = null;
 
 function showTooltip(text, e) {
-    // Determine which document we are in (Main or PiP)
-    const targetDoc = e.target.ownerDocument;
-    
-    if (!activeTooltip) {
-        activeTooltip = targetDoc.createElement('div');
-        activeTooltip.className = 'global-tooltip';
-        targetDoc.body.appendChild(activeTooltip);
-    }
+  // Determine which document we are in (Main or PiP)
+  const targetDoc = e.target.ownerDocument;
 
-    activeTooltip.textContent = text;
-    activeTooltip.style.display = 'block';
-    
-    updateTooltipPosition(e);
+  if (!activeTooltip) {
+    activeTooltip = targetDoc.createElement("div");
+    activeTooltip.className = "global-tooltip";
+    targetDoc.body.appendChild(activeTooltip);
+  }
+
+  activeTooltip.textContent = text;
+  activeTooltip.style.display = "block";
+
+  updateTooltipPosition(e);
 }
 
 function updateTooltipPosition(e) {
-    if (!activeTooltip) return;
+  if (!activeTooltip) return;
 
-    const gap = 15;
-    let x = e.clientX + gap;
-    let y = e.clientY + gap;
+  const gap = 15;
+  let x = e.clientX + gap;
+  let y = e.clientY + gap;
 
-    // Smart bounds checking (prevent cropping)
-    const tw = activeTooltip.offsetWidth;
-    const th = activeTooltip.offsetHeight;
-    const winW = e.target.ownerDocument.defaultView.innerWidth;
-    const winH = e.target.ownerDocument.defaultView.innerHeight;
+  // Smart bounds checking (prevent cropping)
+  const tw = activeTooltip.offsetWidth;
+  const th = activeTooltip.offsetHeight;
+  const winW = e.target.ownerDocument.defaultView.innerWidth;
+  const winH = e.target.ownerDocument.defaultView.innerHeight;
 
-    if (x + tw > winW) x = e.clientX - tw - gap; // Flip to left
-    if (y + th > winH) y = e.clientY - th - gap; // Flip to top
+  if (x + tw > winW) x = e.clientX - tw - gap; // Flip to left
+  if (y + th > winH) y = e.clientY - th - gap; // Flip to top
 
-    activeTooltip.style.left = x + 'px';
-    activeTooltip.style.top = y + 'px';
+  activeTooltip.style.left = x + "px";
+  activeTooltip.style.top = y + "px";
 }
 
 function hideTooltip() {
-    if (activeTooltip) {
-        activeTooltip.style.display = 'none';
-        // Clean up to prevent multi-window ghosting
-        if (activeTooltip.parentNode) activeTooltip.parentNode.removeChild(activeTooltip);
-        activeTooltip = null;
-    }
+  if (activeTooltip) {
+    activeTooltip.style.display = "none";
+    // Clean up to prevent multi-window ghosting
+    if (activeTooltip.parentNode)
+      activeTooltip.parentNode.removeChild(activeTooltip);
+    activeTooltip = null;
+  }
 }
 
 // ==========================================
@@ -145,452 +157,463 @@ initTrackerDropdowns();
 setupDragAndDrop();
 
 // Check for previous file immediately on load
-document.addEventListener('DOMContentLoaded', () => {
-    checkPreviousFile();
-    initForecast(); // Initialize Forecast system
+document.addEventListener("DOMContentLoaded", () => {
+  checkPreviousFile();
+  initForecast(); // Initialize Forecast system
 });
 
 // MODIFIED: Drop Zone handles BOTH Log files and CSV files
-dropZone.addEventListener('dragover', (e) => e.preventDefault());
-dropZone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    const items = e.dataTransfer.items;
-    
-    if (items && items[0] && items[0].kind === 'file') {
-        try {
-            const handle = await items[0].getAsFileSystemHandle();
-            
-            // CHECK FILE TYPE
-            if (handle.name.toLowerCase().endsWith('.csv')) {
-                // It's the Forecast File
-                const file = await handle.getFile();
-                const text = await file.text();
-                localStorage.setItem(FORECAST_STORAGE_KEY, text);
-                parseForecastCSV(text);
-                alert("✅ Forecast data updated successfully!");
-            } else {
-                // Assume it's the Game Log
-                fileHandle = handle;
-                await startTracking(fileHandle);
-            }
-        } catch (err) { 
-            console.error(err);
-            alert("Error reading file. Please try again."); 
-        }
+dropZone.addEventListener("dragover", (e) => e.preventDefault());
+dropZone.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  const items = e.dataTransfer.items;
+
+  if (items && items[0] && items[0].kind === "file") {
+    try {
+      const handle = await items[0].getAsFileSystemHandle();
+
+      // CHECK FILE TYPE
+      if (handle.name.toLowerCase().endsWith(".csv")) {
+        // It's the Forecast File
+        const file = await handle.getFile();
+        const text = await file.text();
+        localStorage.setItem(FORECAST_STORAGE_KEY, text);
+        parseForecastCSV(text);
+        alert("✅ Forecast data updated successfully!");
+      } else {
+        // Assume it's the Game Log
+        fileHandle = handle;
+        await startTracking(fileHandle);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error reading file. Please try again.");
     }
+  }
 });
 
 // Reconnect Button Logic
 if (reconnectBtn) {
-    reconnectBtn.addEventListener('click', async () => {
-        const handle = await getSavedHandle();
-        if (handle) {
-            // Browser requires permission verification on new session
-            const opts = { mode: 'read' };
-            try {
-                // queryPermission might return 'prompt' or 'granted'
-                // We request it if it's not granted
-                if ((await handle.queryPermission(opts)) === 'granted' || (await handle.requestPermission(opts)) === 'granted') {
-                    fileHandle = handle;
-                    await startTracking(fileHandle);
-                } else {
-                    alert("Permission denied. Please select the file again.");
-                    reconnectContainer.style.display = 'none';
-                    dropZone.style.display = 'block';
-                }
-            } catch (e) {
-                console.error("Permission error:", e);
-                // If the handle is stale, force new selection
-                reconnectContainer.style.display = 'none';
-                dropZone.style.display = 'block';
-            }
+  reconnectBtn.addEventListener("click", async () => {
+    const handle = await getSavedHandle();
+    if (handle) {
+      // Browser requires permission verification on new session
+      const opts = { mode: "read" };
+      try {
+        // queryPermission might return 'prompt' or 'granted'
+        // We request it if it's not granted
+        if (
+          (await handle.queryPermission(opts)) === "granted" ||
+          (await handle.requestPermission(opts)) === "granted"
+        ) {
+          fileHandle = handle;
+          await startTracking(fileHandle);
+        } else {
+          alert("Permission denied. Please select the file again.");
+          reconnectContainer.style.display = "none";
+          dropZone.style.display = "block";
         }
-    });
+      } catch (e) {
+        console.error("Permission error:", e);
+        // If the handle is stale, force new selection
+        reconnectContainer.style.display = "none";
+        dropZone.style.display = "block";
+      }
+    }
+  });
 }
 
 if (newFileBtn) {
-    newFileBtn.addEventListener('click', () => {
-        reconnectContainer.style.display = 'none';
-        dropZone.style.display = 'block';
-    });
+  newFileBtn.addEventListener("click", () => {
+    reconnectContainer.style.display = "none";
+    dropZone.style.display = "block";
+  });
 }
 
 // COPY PATH LOGIC
-if(copyPathBtn && logPathEl) {
-    copyPathBtn.addEventListener('click', () => {
-        const path = logPathEl.textContent;
-        navigator.clipboard.writeText(path).then(() => {
-            const originalText = copyPathBtn.textContent;
-            copyPathBtn.textContent = "COPIED!";
-            copyPathBtn.style.background = "var(--accent, #00e1ff)";
-            copyPathBtn.style.color = "#000";
-            
-            setTimeout(() => {
-                copyPathBtn.textContent = originalText;
-                copyPathBtn.style.background = "#444";
-                copyPathBtn.style.color = "#fff";
-            }, 1500);
-        });
+if (copyPathBtn && logPathEl) {
+  copyPathBtn.addEventListener("click", () => {
+    const path = logPathEl.textContent;
+    navigator.clipboard.writeText(path).then(() => {
+      const originalText = copyPathBtn.textContent;
+      copyPathBtn.textContent = "COPIED!";
+      copyPathBtn.style.background = "var(--accent, #00e1ff)";
+      copyPathBtn.style.color = "#000";
+
+      setTimeout(() => {
+        copyPathBtn.textContent = originalText;
+        copyPathBtn.style.background = "#444";
+        copyPathBtn.style.color = "#fff";
+      }, 1500);
     });
+  });
 }
 
 function generateSpellMap() {
-    if (typeof classSpells === 'undefined') return;
-    spellToClassMap = {};
-    
-    // Iterate over each class (e.g., "feca", "iop")
-    for (const [className, langData] of Object.entries(classSpells)) {
-        // Handle the new structure: Object with languages { en: [], fr: [] }
-        if (typeof langData === 'object' && !Array.isArray(langData)) {
-            // Iterate over each language array
-            for (const spells of Object.values(langData)) {
-                if (Array.isArray(spells)) {
-                    spells.forEach(spell => {
-                        spellToClassMap[spell] = className;
-                    });
-                }
-            }
-        } 
-        // Fallback for flat structure if data is mixed (e.g. array of strings)
-        else if (Array.isArray(langData)) {
-            langData.forEach(spell => {
-                spellToClassMap[spell] = className;
-            });
+  if (typeof classSpells === "undefined") return;
+  spellToClassMap = {};
+
+  // Iterate over each class (e.g., "feca", "iop")
+  for (const [className, langData] of Object.entries(classSpells)) {
+    // Handle the new structure: Object with languages { en: [], fr: [] }
+    if (typeof langData === "object" && !Array.isArray(langData)) {
+      // Iterate over each language array
+      for (const spells of Object.values(langData)) {
+        if (Array.isArray(spells)) {
+          spells.forEach((spell) => {
+            spellToClassMap[spell] = className;
+          });
         }
+      }
     }
+    // Fallback for flat structure if data is mixed (e.g. array of strings)
+    else if (Array.isArray(langData)) {
+      langData.forEach((spell) => {
+        spellToClassMap[spell] = className;
+      });
+    }
+  }
 }
 
 function setupDragAndDrop() {
-    const alliesList = document.getElementById('list-allies');
-    const enemiesList = document.getElementById('list-enemies');
+  const alliesList = document.getElementById("list-allies");
+  const enemiesList = document.getElementById("list-enemies");
 
-    [alliesList, enemiesList].forEach(list => {
-        list.addEventListener('dragover', (e) => {
-            e.preventDefault(); 
-            list.classList.add('drag-over');
-        });
-        
-        list.addEventListener('dragleave', (e) => {
-            list.classList.remove('drag-over');
-        });
-        
-        list.addEventListener('drop', (e) => {
-            e.preventDefault();
-            list.classList.remove('drag-over');
-            const playerName = e.dataTransfer.getData('text/plain');
-            if (!playerName) return;
-
-            const targetType = (list.id === 'list-allies') ? 'ally' : 'enemy';
-            
-            // Set Manual Override
-            manualOverrides[playerName] = targetType;
-            renderMeter();
-        });
+  [alliesList, enemiesList].forEach((list) => {
+    list.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      list.classList.add("drag-over");
     });
+
+    list.addEventListener("dragleave", (e) => {
+      list.classList.remove("drag-over");
+    });
+
+    list.addEventListener("drop", (e) => {
+      e.preventDefault();
+      list.classList.remove("drag-over");
+      const playerName = e.dataTransfer.getData("text/plain");
+      if (!playerName) return;
+
+      const targetType = list.id === "list-allies" ? "ally" : "enemy";
+
+      // Set Manual Override
+      manualOverrides[playerName] = targetType;
+      renderMeter();
+    });
+  });
 }
 
 // ==========================================
 // INDEXED DB (PERSISTENCE) - FIXED
 // ==========================================
-const DB_NAME = 'WakfuNexusDB';
+const DB_NAME = "WakfuNexusDB";
 const DB_VERSION = 2; // Bumped version to ensure schema update if needed
-const STORE_NAME = 'fileHandles';
+const STORE_NAME = "fileHandles";
 
 function openDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        
-        request.onupgradeneeded = (e) => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME);
-            }
-        };
-        
-        request.onsuccess = (e) => resolve(e.target.result);
-        request.onerror = (e) => {
-            console.error("DB Error:", e);
-            reject(e);
-        };
-    });
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => {
+      console.error("DB Error:", e);
+      reject(e);
+    };
+  });
 }
 
 async function saveFileHandleToDB(handle) {
-    try {
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        
-        // Return a promise that resolves when the transaction completes
-        return new Promise((resolve, reject) => {
-            const req = store.put(handle, 'activeLog');
-            
-            tx.oncomplete = () => {
-                console.log("File handle saved successfully.");
-                resolve();
-            };
-            
-            tx.onerror = (e) => {
-                console.error("Transaction failed:", e);
-                reject(e);
-            };
-            
-            req.onerror = (e) => {
-                console.error("Put request failed:", e);
-                reject(e);
-            };
-        });
-    } catch(e) {
-        console.error("Failed to save handle:", e);
-    }
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+
+    // Return a promise that resolves when the transaction completes
+    return new Promise((resolve, reject) => {
+      const req = store.put(handle, "activeLog");
+
+      tx.oncomplete = () => {
+        console.log("File handle saved successfully.");
+        resolve();
+      };
+
+      tx.onerror = (e) => {
+        console.error("Transaction failed:", e);
+        reject(e);
+      };
+
+      req.onerror = (e) => {
+        console.error("Put request failed:", e);
+        reject(e);
+      };
+    });
+  } catch (e) {
+    console.error("Failed to save handle:", e);
+  }
 }
 
 async function getSavedHandle() {
-    try {
-        const db = await openDB();
-        return new Promise((resolve) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.get('activeLog');
-            
-            req.onsuccess = () => resolve(req.result);
-            req.onerror = () => resolve(null);
-        });
-    } catch(e) { 
-        console.error("Error getting handle:", e);
-        return null; 
-    }
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get("activeLog");
+
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    console.error("Error getting handle:", e);
+    return null;
+  }
 }
 
 async function checkPreviousFile() {
-    const handle = await getSavedHandle();
-    if (handle) {
-        if(dropZone) dropZone.style.display = 'none';
-        if(reconnectContainer) {
-            reconnectContainer.style.display = 'block';
-            if(prevFilenameEl) prevFilenameEl.textContent = handle.name;
-        }
+  const handle = await getSavedHandle();
+  if (handle) {
+    if (dropZone) dropZone.style.display = "none";
+    if (reconnectContainer) {
+      reconnectContainer.style.display = "block";
+      if (prevFilenameEl) prevFilenameEl.textContent = handle.name;
     }
+  }
 }
 
 // ==========================================
 // ITEM TRACKER LOGIC
 // ==========================================
 function initTrackerDropdowns() {
-    if (typeof professionItems === 'undefined') return;
-    for (const prof in professionItems) {
-        const opt = document.createElement('option');
-        opt.value = prof;
-        opt.textContent = prof;
-        profSelect.appendChild(opt);
-    }
-    loadTrackerState();
+  if (typeof professionItems === "undefined") return;
+  for (const prof in professionItems) {
+    const opt = document.createElement("option");
+    opt.value = prof;
+    opt.textContent = prof;
+    profSelect.appendChild(opt);
+  }
+  loadTrackerState();
 }
 
 function updateItemDropdown() {
-    const prof = profSelect.value;
-    
-    // Clear input and datalist
-    itemInput.value = "";
-    itemDatalist.innerHTML = "";
-    
-    if (professionItems[prof]) {
-        professionItems[prof].forEach(itemData => {
-            const opt = document.createElement('option');
-            // Datalist uses 'value' for the text displayed in the dropdown
-            opt.value = itemData.name;
-            itemDatalist.appendChild(opt);
-        });
-    }
+  const prof = profSelect.value;
+
+  // Clear input and datalist
+  itemInput.value = "";
+  itemDatalist.innerHTML = "";
+
+  if (professionItems[prof]) {
+    professionItems[prof].forEach((itemData) => {
+      const opt = document.createElement("option");
+      // Datalist uses 'value' for the text displayed in the dropdown
+      opt.value = itemData.name;
+      itemDatalist.appendChild(opt);
+    });
+  }
 }
 // --- View Toggle ---
 function toggleTrackerView() {
-    trackerViewMode = (trackerViewMode === 'grid') ? 'list' : 'grid';
-    
-    // Update button icon
-    const btn = document.getElementById('tracker-view-toggle');
-    if (btn) btn.textContent = (trackerViewMode === 'grid') ? '☰' : '⊞';
-    
-    renderTracker();
+  trackerViewMode = trackerViewMode === "grid" ? "list" : "grid";
+
+  // Update button icon
+  const btn = document.getElementById("tracker-view-toggle");
+  if (btn) btn.textContent = trackerViewMode === "grid" ? "☰" : "⊞";
+
+  renderTracker();
 }
 
 // --- Persistence Helpers ---
 function saveTrackerState() {
-    localStorage.setItem('wakfu_tracker_data', JSON.stringify(trackedItems));
+  localStorage.setItem("wakfu_tracker_data", JSON.stringify(trackedItems));
 }
 
 function loadTrackerState() {
-    const data = localStorage.getItem('wakfu_tracker_data');
-    if (data) {
-        try {
-            trackedItems = JSON.parse(data);
-            renderTracker();
-        } catch (e) {
-            console.error("Error loading tracker state", e);
-            trackedItems = [];
-        }
+  const data = localStorage.getItem("wakfu_tracker_data");
+  if (data) {
+    try {
+      trackedItems = JSON.parse(data);
+      renderTracker();
+    } catch (e) {
+      console.error("Error loading tracker state", e);
+      trackedItems = [];
     }
+  }
 }
 
 // --- Actions ---
 function addTrackedItem() {
-    const currentProf = profSelect.value;
-    const itemName = itemInput.value.trim();
+  const currentProf = profSelect.value;
+  const itemName = itemInput.value.trim();
 
-    if (!currentProf) {
-        alert("Please select a profession first.");
-        return;
-    }
-    if (!itemName) {
-        alert("Please select or search for an item.");
-        return;
-    }
+  if (!currentProf) {
+    alert("Please select a profession first.");
+    return;
+  }
+  if (!itemName) {
+    alert("Please select or search for an item.");
+    return;
+  }
 
-    // Validate the item actually exists in the selected profession
-    // (Since inputs allow typing anything)
-    const itemData = professionItems[currentProf].find(i => i.name.toLowerCase() === itemName.toLowerCase());
-    
-    if (!itemData) {
-        alert(`"${itemName}" is not a valid item for ${currentProf}. Please select from the list.`);
-        return;
-    }
+  // Validate the item actually exists in the selected profession
+  // (Since inputs allow typing anything)
+  const itemData = professionItems[currentProf].find(
+    (i) => i.name.toLowerCase() === itemName.toLowerCase()
+  );
 
-    // Check for duplicates
-    if (trackedItems.find(t => t.name === itemData.name)) { 
-        alert("Already tracking " + itemData.name); 
-        // Clear input for convenience
-        itemInput.value = "";
-        return; 
-    }
-    
-    // Prompt for Target
-    let target = prompt("Target quantity?", "500");
-    if (target === null) return; // User cancelled
-    target = parseInt(target) || 500;
+  if (!itemData) {
+    alert(
+      `"${itemName}" is not a valid item for ${currentProf}. Please select from the list.`
+    );
+    return;
+  }
 
-    trackedItems.push({
-        id: Date.now(),
-        name: itemData.name,
-        current: 0,
-        target: target,
-        level: itemData.level,
-        rarity: itemData.rarity,
-        profession: currentProf
-    });
-    
-    // Clear input after adding
+  // Check for duplicates
+  if (trackedItems.find((t) => t.name === itemData.name)) {
+    alert("Already tracking " + itemData.name);
+    // Clear input for convenience
     itemInput.value = "";
-    
-    saveTrackerState(); 
-    renderTracker();
+    return;
+  }
+
+  // Prompt for Target
+  let target = prompt("Target quantity?", "500");
+  if (target === null) return; // User cancelled
+  target = parseInt(target) || 500;
+
+  trackedItems.push({
+    id: Date.now(),
+    name: itemData.name,
+    current: 0,
+    target: target,
+    level: itemData.level,
+    rarity: itemData.rarity,
+    profession: currentProf,
+  });
+
+  // Clear input after adding
+  itemInput.value = "";
+
+  saveTrackerState();
+  renderTracker();
 }
 
 function removeTrackedItem(id) {
-    trackedItems = trackedItems.filter(t => t.id !== id);
-    saveTrackerState(); 
-    renderTracker();
+  trackedItems = trackedItems.filter((t) => t.id !== id);
+  saveTrackerState();
+  renderTracker();
 }
 
 function updateItemValue(id, key, val) {
-    const item = trackedItems.find(t => t.id === id);
-    if (item) {
-        item[key] = parseInt(val) || 0;
-        saveTrackerState(); 
-        renderTracker();
-    }
+  const item = trackedItems.find((t) => t.id === id);
+  if (item) {
+    item[key] = parseInt(val) || 0;
+    saveTrackerState();
+    renderTracker();
+  }
 }
 
 function renderTracker() {
-    const listEl = getUI('tracker-list');
-    if (!listEl) return;
-    
-    listEl.innerHTML = "";
-    if (trackedItems.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">Add items to track</div>';
-        return;
-    }
+  const listEl = getUI("tracker-list");
+  if (!listEl) return;
 
-    const isGrid = (trackerViewMode === 'grid');
-    listEl.classList.toggle('grid-view', isGrid);
+  // Clear the current list
+  listEl.innerHTML = "";
 
-    trackedItems.forEach((item, index) => {
-        const isComplete = item.current >= item.target && item.target > 0;
-        const progress = Math.min((item.current / (item.target || 1)) * 100, 100);
-        const safeItemName = item.name.replace(/\s+/g, '_');
+  if (trackedItems.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">Add items to track</div>';
+    return;
+  }
 
-        if (isGrid) {
-            // --- GRID VIEW ---
-            const slot = document.createElement('div');
-            slot.className = `inventory-slot ${isComplete ? 'complete' : ''}`;
-            slot.setAttribute('draggable', 'true');
-            slot.dataset.index = index;
+  const isGrid = trackerViewMode === "grid";
+  listEl.classList.toggle("grid-view", isGrid);
 
-            // Tooltip (Custom attribute for our CSS tooltip)
-            const progText = `${item.current} / ${item.target} (${Math.floor(progress)}%)`;
-            const tooltipText = `${item.name}\nProgress: ${item.current} / ${item.target} (${Math.floor(progress)}%)`;
+  trackedItems.forEach((item, index) => {
+    const isComplete = item.current >= item.target && item.target > 0;
+    const progress = Math.min((item.current / (item.target || 1)) * 100, 100);
+    const safeItemName = item.name.replace(/\s+/g, "_");
 
-            slot.onmouseenter = (e) => showTooltip(tooltipText, e);
-            slot.onmousemove = (e) => updateTooltipPosition(e);
-            slot.onmouseleave = () => hideTooltip();
+    // Profession Icon Setup
+    const profName = (item.profession || "miner").toLowerCase();
+    const profIconPath = `img/resources/${profName}.png`;
 
-            // Main click to open modal
-            slot.onclick = (e) => {
-             openTrackerModal(item.id);
-            };
+    // Tooltip Text Construction
+    const tooltipText = `${
+      item.name
+    }\nProgress: ${item.current.toLocaleString()} / ${item.target.toLocaleString()} (${Math.floor(
+      progress
+    )}%)`;
 
-            slot.innerHTML = `
-                <button class="slot-delete-btn" title="Remove">×</button>
-                <img src="img/resources/${safeItemName}.png" class="slot-icon" 
-                onerror="this.src='img/resources/${safeItemName}.webp'; this.onerror=function(){this.style.display='none'};">
-                <div class="slot-count">${item.current.toLocaleString()}</div>
-                <div class="slot-progress-container">
-                <div class="slot-progress-bar" style="width: ${progress}%"></div>
-                </div>
-                `;
+    if (isGrid) {
+      // ==========================================
+      // GRID VIEW RENDERING
+      // ==========================================
+      const slot = document.createElement("div");
+      slot.className = `inventory-slot ${isComplete ? "complete" : ""}`;
+      slot.setAttribute("draggable", "true");
+      slot.dataset.index = index;
 
-            // Add event listener to the Red X specifically
-                slot.querySelector('.slot-delete-btn').onclick = (e) => {
-                e.stopPropagation(); // Prevents opening the modal when clicking X
-                if(confirm(`Stop tracking ${item.name}?`)) { removeTrackedItem(item.id);} };
+      // Interaction Events
+      slot.onmouseenter = (e) => showTooltip(tooltipText, e);
+      slot.onmousemove = (e) => updateTooltipPosition(e);
+      slot.onmouseleave = () => hideTooltip();
+      slot.onclick = () => openTrackerModal(item.id);
 
-            // Drag and Drop Listeners for Grid
-            slot.addEventListener('dragstart', handleTrackDragStart);
-            slot.addEventListener('dragenter', handleTrackDragEnter);
-            slot.addEventListener('dragover', handleTrackDragOver);
-            slot.addEventListener('dragleave', handleTrackDragLeave);
-            slot.addEventListener('drop', handleTrackDrop);
-            slot.addEventListener('dragend', handleTrackDragEnd);
+      // Drag & Drop Events
+      slot.addEventListener("dragstart", handleTrackDragStart);
+      slot.addEventListener("dragenter", handleTrackDragEnter);
+      slot.addEventListener("dragover", handleTrackDragOver);
+      slot.addEventListener("dragleave", handleTrackDragLeave);
+      slot.addEventListener("drop", handleTrackDrop);
+      slot.addEventListener("dragend", handleTrackDragEnd);
 
-            slot.innerHTML = `
+      slot.innerHTML = `
+                <!-- Profession Icon (Top-Left) -->
+                <img src="${profIconPath}" class="slot-prof-icon" onerror="this.style.display='none'">
+                
+                <!-- Resource Icon -->
                 <img src="img/resources/${safeItemName}.png" class="slot-icon" 
                      onerror="this.src='img/resources/${safeItemName}.webp'; this.onerror=function(){this.style.display='none'};">
+                
+                <!-- Current Count Overlay -->
                 <div class="slot-count">${item.current.toLocaleString()}</div>
+                
+                <!-- Bottom Progress Bar -->
                 <div class="slot-progress-container">
                     <div class="slot-progress-bar" style="width: ${progress}%"></div>
                 </div>
             `;
-            listEl.appendChild(slot);
+      listEl.appendChild(slot);
+    } else {
+      // ==========================================
+      // LIST VIEW RENDERING
+      // ==========================================
+      const row = document.createElement("div");
+      row.className = `tracked-item-row ${isComplete ? "complete" : ""}`;
+      row.setAttribute("draggable", "true");
+      row.dataset.index = index;
 
-        } else {
-            // --- LIST VIEW ---
-            const row = document.createElement('div');
-            row.className = `tracked-item-row ${isComplete ? 'complete' : ''}`;
-            row.setAttribute('draggable', 'true');
-            row.dataset.index = index;
+      // Drag & Drop Events
+      row.addEventListener("dragstart", handleTrackDragStart);
+      row.addEventListener("dragenter", handleTrackDragEnter);
+      row.addEventListener("dragover", handleTrackDragOver);
+      row.addEventListener("dragleave", handleTrackDragLeave);
+      row.addEventListener("drop", handleTrackDrop);
+      row.addEventListener("dragend", handleTrackDragEnd);
 
-            // Reuse existing drag/drop logic
-            row.addEventListener('dragstart', handleTrackDragStart);
-            row.addEventListener('dragenter', handleTrackDragEnter);
-            row.addEventListener('dragover', handleTrackDragOver);
-            row.addEventListener('dragleave', handleTrackDragLeave);
-            row.addEventListener('drop', handleTrackDrop);
-            row.addEventListener('dragend', handleTrackDragEnd);
+      const rarityName = (item.rarity || "common").toLowerCase();
 
-            const rarityName = (item.rarity || 'common').toLowerCase();
-            const profIconName = (item.profession || 'miner').toLowerCase().replace(' ', '_');
-
-            row.innerHTML = `
-                <div class="t-left-group">
+      row.innerHTML = `
+                <!-- Left Info Section (Clickable to Edit) -->
+                <div class="t-left-group" style="cursor: pointer;" onclick="openTrackerModal(${
+                  item.id
+                })">
                     <img src="img/resources/${safeItemName}.png" class="resource-icon" 
                          onerror="this.src='img/resources/${safeItemName}.webp';">
                     <div class="t-info-text">
@@ -599,105 +622,138 @@ function renderTracker() {
                         <span class="t-item-name">${item.name}</span>
                     </div>
                 </div>
+
+                <!-- Middle Input Section -->
                 <div class="t-input-container">
-                    <input type="number" class="t-input" value="${item.current}" onchange="updateItemValue(${item.id}, 'current', this.value)">
+                    <input type="number" class="t-input" value="${
+                      item.current
+                    }" 
+                           onchange="updateItemValue(${
+                             item.id
+                           }, 'current', this.value)">
                     <span class="t-separator">/</span>
-                    <input type="number" class="t-input" value="${item.target}" onchange="updateItemValue(${item.id}, 'target', this.value)">
+                    <input type="number" class="t-input" value="${item.target}" 
+                           onchange="updateItemValue(${
+                             item.id
+                           }, 'target', this.value)">
                 </div>
+
+                <!-- Right Status Section -->
                 <div class="t-right-group">
-                    <img src="img/jobs/${profIconName}.png" class="t-job-icon" onerror="this.style.display='none'">
+                    <!-- Colorful Profession Icon -->
+                    <img src="${profIconPath}" class="t-job-icon" onerror="this.style.display='none'">
+                    
                     <div class="t-status-col">
-                        <button class="t-delete-btn" onclick="removeTrackedItem(${item.id})">×</button>
-                        <span class="t-progress-text">${Math.floor(progress)}%</span>
+                        <button class="t-delete-btn" onclick="removeTrackedItem(${
+                          item.id
+                        })">×</button>
+                        <span class="t-progress-text">${Math.floor(
+                          progress
+                        )}%</span>
                     </div>
                 </div>
             `;
-            listEl.appendChild(row);
-        }
-    });
+
+      // Tooltip for the name/icon area in list view
+      const infoArea = row.querySelector(".t-left-group");
+      infoArea.onmouseenter = (e) => showTooltip(tooltipText, e);
+      infoArea.onmousemove = (e) => updateTooltipPosition(e);
+      infoArea.onmouseleave = () => hideTooltip();
+
+      listEl.appendChild(row);
+    }
+  });
 }
 
 // --- Drag & Drop Handlers ---
 
 function handleTrackDragStart(e) {
-    this.classList.add('dragging');
-    dragSrcIndex = this.dataset.index;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', dragSrcIndex);
+  this.classList.add("dragging");
+  dragSrcIndex = this.dataset.index;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", dragSrcIndex);
 }
 
 function handleTrackDragOver(e) {
-    if (e.preventDefault) e.preventDefault(); // Necessary to allow dropping
-    e.dataTransfer.dropEffect = 'move';
-    return false;
+  if (e.preventDefault) e.preventDefault(); // Necessary to allow dropping
+  e.dataTransfer.dropEffect = "move";
+  return false;
 }
 
 function handleTrackDragEnter(e) {
-    // Only highlight if we are entering a different row than the one we are dragging
-    if (this.dataset.index !== dragSrcIndex) {
-        this.classList.add('drag-over');
-    }
+  // Only highlight if we are entering a different row than the one we are dragging
+  if (this.dataset.index !== dragSrcIndex) {
+    this.classList.add("drag-over");
+  }
 }
 
 function handleTrackDragLeave(e) {
-    this.classList.remove('drag-over');
+  this.classList.remove("drag-over");
 }
 
 function handleTrackDrop(e) {
-    if (e.stopPropagation) e.stopPropagation();
+  if (e.stopPropagation) e.stopPropagation();
 
-    const destIndex = this.dataset.index;
+  const destIndex = this.dataset.index;
 
-    // Don't do anything if dropping on itself
-    if (dragSrcIndex !== destIndex && dragSrcIndex !== null) {
-        // Reorder Array
-        const fromIdx = parseInt(dragSrcIndex, 10);
-        const toIdx = parseInt(destIndex, 10);
-        
-        // Remove item from old position
-        const movedItem = trackedItems.splice(fromIdx, 1)[0];
-        // Insert at new position
-        trackedItems.splice(toIdx, 0, movedItem);
+  // Don't do anything if dropping on itself
+  if (dragSrcIndex !== destIndex && dragSrcIndex !== null) {
+    // Reorder Array
+    const fromIdx = parseInt(dragSrcIndex, 10);
+    const toIdx = parseInt(destIndex, 10);
 
-        saveTrackerState();
-        renderTracker();
-    }
-    return false;
+    // Remove item from old position
+    const movedItem = trackedItems.splice(fromIdx, 1)[0];
+    // Insert at new position
+    trackedItems.splice(toIdx, 0, movedItem);
+
+    saveTrackerState();
+    renderTracker();
+  }
+  return false;
 }
 
 function handleTrackDragEnd(e) {
-    this.classList.remove('dragging');
-    const rows = document.querySelectorAll('.tracked-item-row');
-    rows.forEach(row => row.classList.remove('drag-over'));
-    dragSrcIndex = null;
+  this.classList.remove("dragging");
+  const rows = document.querySelectorAll(".tracked-item-row");
+  rows.forEach((row) => row.classList.remove("drag-over"));
+  dragSrcIndex = null;
 }
 
 function processItemLog(line) {
-    const match = line.match(/You have picked up (\d+)x (.*?) \./i);
-    if (match) {
-        const qty = parseInt(match[1], 10);
-        const rawName = match[2].trim().toLowerCase();
-        let updated = false;
-        trackedItems.forEach(item => {
-            const trackNameLower = item.name.toLowerCase();
-            if (trackNameLower.includes(rawName) || rawName.includes(trackNameLower)) {
-                item.current += qty;
-                updated = true;
-                showTrackerNotification(qty, item.name);
-            }
-        });
-        if (updated) { saveTrackerState(); renderTracker(); }
+  const match = line.match(/You have picked up (\d+)x (.*?) \./i);
+  if (match) {
+    const qty = parseInt(match[1], 10);
+    const rawName = match[2].trim().toLowerCase();
+    let updated = false;
+    trackedItems.forEach((item) => {
+      const trackNameLower = item.name.toLowerCase();
+      if (
+        trackNameLower.includes(rawName) ||
+        rawName.includes(trackNameLower)
+      ) {
+        item.current += qty;
+        updated = true;
+        showTrackerNotification(qty, item.name);
+      }
+    });
+    if (updated) {
+      saveTrackerState();
+      renderTracker();
     }
+  }
 }
 
 function showTrackerNotification(qty, itemName) {
-    const container = document.getElementById('tracker-notifications');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'tracker-toast';
-    toast.textContent = `Picked up ${qty}x ${itemName}`;
-    container.appendChild(toast);
-    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3000);
+  const container = document.getElementById("tracker-notifications");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = "tracker-toast";
+  toast.textContent = `Picked up ${qty}x ${itemName}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 3000);
 }
 
 // ==========================================
@@ -705,446 +761,520 @@ function showTrackerNotification(qty, itemName) {
 // ==========================================
 
 function toggleLang(lang) {
-    if (!transConfig.enabled) toggleMasterSwitch(); 
-    transConfig[lang] = !transConfig[lang];
-    updateLangButtons();
+  if (!transConfig.enabled) toggleMasterSwitch();
+  transConfig[lang] = !transConfig[lang];
+  updateLangButtons();
 }
 
 function toggleMasterSwitch() {
-    transConfig.enabled = !transConfig.enabled;
-    if (!transConfig.enabled) { translationQueue.length = 0; isTranslating = false; }
-    updateLangButtons();
+  transConfig.enabled = !transConfig.enabled;
+  if (!transConfig.enabled) {
+    translationQueue.length = 0;
+    isTranslating = false;
+  }
+  updateLangButtons();
 }
 
 function updateLangButtons() {
-    document.getElementById('btnPT').classList.toggle('active', transConfig.pt && transConfig.enabled);
-    document.getElementById('btnFR').classList.toggle('active', transConfig.fr && transConfig.enabled);
-    document.getElementById('btnES').classList.toggle('active', transConfig.es && transConfig.enabled);
-    document.getElementById('btnOther').classList.toggle('active', transConfig.others && transConfig.enabled);
-    
-    const btnMaster = document.getElementById('btnMaster');
-    if (transConfig.enabled) {
-        btnMaster.className = 'lang-btn master-on';
-        btnMaster.textContent = "ENABLED";
-    } else {
-        btnMaster.className = 'lang-btn master-off';
-        btnMaster.textContent = "DISABLED";
-    }
+  document
+    .getElementById("btnPT")
+    .classList.toggle("active", transConfig.pt && transConfig.enabled);
+  document
+    .getElementById("btnFR")
+    .classList.toggle("active", transConfig.fr && transConfig.enabled);
+  document
+    .getElementById("btnES")
+    .classList.toggle("active", transConfig.es && transConfig.enabled);
+  document
+    .getElementById("btnOther")
+    .classList.toggle("active", transConfig.others && transConfig.enabled);
+
+  const btnMaster = document.getElementById("btnMaster");
+  if (transConfig.enabled) {
+    btnMaster.className = "lang-btn master-on";
+    btnMaster.textContent = "ENABLED";
+  } else {
+    btnMaster.className = "lang-btn master-off";
+    btnMaster.textContent = "DISABLED";
+  }
 }
 
 // ==========================================
 // CORE LOGIC
 // ==========================================
 async function startTracking(handle) {
-    // Save to DB for next time (AWAIT ensures it saves before continuing)
-    await saveFileHandleToDB(handle);
+  // Save to DB for next time (AWAIT ensures it saves before continuing)
+  await saveFileHandleToDB(handle);
 
-    document.getElementById('setup-panel').style.display = 'none';
-    activeFilename.textContent = handle.name;
-    liveIndicator.style.display = 'inline-block';
-    
-    performReset(true);
-    chatList.innerHTML = '<div class="empty-state">Waiting for chat logs...</div>';
-    
-    try {
-        const file = await handle.getFile();
-        fileOffset = file.size; 
-    } catch (e) { fileOffset = 0; }
+  document.getElementById("setup-panel").style.display = "none";
+  activeFilename.textContent = handle.name;
+  liveIndicator.style.display = "inline-block";
 
-    if (parseIntervalId) clearInterval(parseIntervalId);
-    parseIntervalId = setInterval(parseFile, 1000); 
-    startWatchdog();
+  performReset(true);
+  chatList.innerHTML =
+    '<div class="empty-state">Waiting for chat logs...</div>';
+
+  try {
+    const file = await handle.getFile();
+    fileOffset = file.size;
+  } catch (e) {
+    fileOffset = 0;
+  }
+
+  if (parseIntervalId) clearInterval(parseIntervalId);
+  parseIntervalId = setInterval(parseFile, 1000);
+  startWatchdog();
 }
 
 async function parseFile() {
-    if (isReading || !fileHandle) return;
-    isReading = true;
-    try {
-        const file = await fileHandle.getFile();
-        if (file.size > fileOffset) {
-            const blob = file.slice(fileOffset, file.size);
-            const text = await blob.text();
-            const lines = text.split(/\r?\n/);
-            lines.forEach(processLine);
-            fileOffset = file.size;
-            renderMeter();
-        }
-    } catch (err) { console.error(err); } 
-    finally { isReading = false; }
+  if (isReading || !fileHandle) return;
+  isReading = true;
+  try {
+    const file = await fileHandle.getFile();
+    if (file.size > fileOffset) {
+      const blob = file.slice(fileOffset, file.size);
+      const text = await blob.text();
+      const lines = text.split(/\r?\n/);
+      lines.forEach(processLine);
+      fileOffset = file.size;
+      renderMeter();
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    isReading = false;
+  }
 }
 
 function processLine(line) {
-    if (!line) return;
-    if (line.includes("You have picked up")) processItemLog(line);
-    if (line.includes("[Game Log]")) return;
-    
-    // MULTI-LANGUAGE COMBAT HEADERS
-    if (line.includes("[Fight Log]") || 
-        line.includes("[Information (combat)]") || 
-        line.includes("[Información (combate)]") || 
-        line.includes("[Registro de Lutas]")) { 
-        processFightLog(line); 
-        return; 
-    }
-    
-    if (line.match(/^\d{2}:\d{2}:\d{2}/)) processChatLog(line);
+  if (!line) return;
+  if (line.includes("You have picked up")) processItemLog(line);
+  if (line.includes("[Game Log]")) return;
+
+  // MULTI-LANGUAGE COMBAT HEADERS
+  if (
+    line.includes("[Fight Log]") ||
+    line.includes("[Information (combat)]") ||
+    line.includes("[Información (combate)]") ||
+    line.includes("[Registro de Lutas]")
+  ) {
+    processFightLog(line);
+    return;
+  }
+
+  if (line.match(/^\d{2}:\d{2}:\d{2}/)) processChatLog(line);
 }
 
 // ==========================================
 // COMBAT METER LOGIC (DMG & HEAL & ARMOR)
 // ==========================================
 function switchMeterMode(mode) {
-    activeMeterMode = mode;
+  activeMeterMode = mode;
 
-    // Update Main Window
-    document.getElementById('tab-damage').classList.toggle('active', mode === 'damage');
-    document.getElementById('tab-healing').classList.toggle('active', mode === 'healing');
-    document.getElementById('tab-armor').classList.toggle('active', mode === 'armor');
+  // Update Main Window
+  document
+    .getElementById("tab-damage")
+    .classList.toggle("active", mode === "damage");
+  document
+    .getElementById("tab-healing")
+    .classList.toggle("active", mode === "healing");
+  document
+    .getElementById("tab-armor")
+    .classList.toggle("active", mode === "armor");
 
-    /// Update PiP Window
-    if (pipWindow && pipWindow.document) {
-        const pDmg = pipWindow.document.getElementById('pip-tab-damage');
-        const pHeal = pipWindow.document.getElementById('pip-tab-healing');
-        const pArm = pipWindow.document.getElementById('pip-tab-armor');
+  /// Update PiP Window
+  if (pipWindow && pipWindow.document) {
+    const pDmg = pipWindow.document.getElementById("pip-tab-damage");
+    const pHeal = pipWindow.document.getElementById("pip-tab-healing");
+    const pArm = pipWindow.document.getElementById("pip-tab-armor");
 
-        if (pDmg && pHeal && pArm) {
-            pDmg.className = 'pip-tab' + (mode === 'damage' ? ' active-dmg' : '');
-            pHeal.className = 'pip-tab' + (mode === 'healing' ? ' active-heal' : '');
-            pArm.className = 'pip-tab' + (mode === 'armor' ? ' active-armor' : '');
-        }
+    if (pDmg && pHeal && pArm) {
+      pDmg.className = "pip-tab" + (mode === "damage" ? " active-dmg" : "");
+      pHeal.className = "pip-tab" + (mode === "healing" ? " active-heal" : "");
+      pArm.className = "pip-tab" + (mode === "armor" ? " active-armor" : "");
     }
-    renderMeter();
+  }
+  renderMeter();
 }
 
 function detectClass(playerName, spellName) {
-    // 1. Enemy Check: If name is in wakfuEnemies, ignore spell-based class detection.
-    if (typeof wakfuEnemies !== 'undefined' && wakfuEnemies.some(e => playerName.includes(e))) {
-        return; 
-    }
+  // 1. Enemy Check: If name is in wakfuEnemies, ignore spell-based class detection.
+  if (
+    typeof wakfuEnemies !== "undefined" &&
+    wakfuEnemies.some((e) => playerName.includes(e))
+  ) {
+    return;
+  }
 
-    // 2. Class Check based on Spells
-    if (spellToClassMap[spellName]) {
-        const detected = spellToClassMap[spellName];
-        
-        // Update if not set or different
-        if (playerClasses[playerName] !== detected) {
-            playerClasses[playerName] = detected;
-            // Clear cache for this player so icon updates
-            delete playerIconCache[playerName];
-        }
+  // 2. Class Check based on Spells
+  if (spellToClassMap[spellName]) {
+    const detected = spellToClassMap[spellName];
+
+    // Update if not set or different
+    if (playerClasses[playerName] !== detected) {
+      playerClasses[playerName] = detected;
+      // Clear cache for this player so icon updates
+      delete playerIconCache[playerName];
     }
+  }
 }
 
 // Helper at the top of your script or inside processFightLog
 const elementMap = {
-    "aire": "Air", "ar": "Air",
-    "fuego": "Fire", "fogo": "Fire", "feu": "Fire",
-    "tierra": "Earth", "terra": "Earth", "terre": "Earth",
-    "agua": "Water", "água": "Water", "eau": "Water",
-    "estasis": "Stasis", "stase": "Stasis",
-    "luz": "Light", "lumière": "Light"
+  aire: "Air",
+  ar: "Air",
+  fuego: "Fire",
+  fogo: "Fire",
+  feu: "Fire",
+  tierra: "Earth",
+  terra: "Earth",
+  terre: "Earth",
+  agua: "Water",
+  água: "Water",
+  eau: "Water",
+  estasis: "Stasis",
+  stase: "Stasis",
+  luz: "Light",
+  lumière: "Light",
 };
 
 function normalizeElement(el) {
-    if (!el) return null;
-    const low = el.toLowerCase();
-    return elementMap[low] || (low.charAt(0).toUpperCase() + low.slice(1));
+  if (!el) return null;
+  const low = el.toLowerCase();
+  return elementMap[low] || low.charAt(0).toUpperCase() + low.slice(1);
 }
 
 function processFightLog(line) {
-    const hpUnits = "HP|PdV|PV";
-    const armorUnits = "Armor|Armadura|Armure";
-    const numPattern = "[\\d,.\\s]+"; // Added dot (.) to support 7.005
+  const hpUnits = "HP|PdV|PV";
+  const armorUnits = "Armor|Armadura|Armure";
+  const numPattern = "[\\d,.\\s]+"; // Added dot (.) to support 7.005
 
-    const parts = line.split(/\[(?:Fight Log|Information \(combat\)|Información \(combate\)|Registro de Lutas)\] /);
-    if (parts.length < 2) return;
-    const content = parts[1].trim();
-    
-    // 1. CAST DETECTION
-    // Handles: casts, lance (le sort), lanza (el hechizo), lança (o feitiço)
-    const castMatch = content.match(/^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/);
-    if (castMatch) {
-        currentCaster = castMatch[1].trim();
-        currentSpell = castMatch[2].trim();
-        detectClass(currentCaster, currentSpell);
-        return;
-    }
+  const parts = line.split(
+    /\[(?:Fight Log|Information \(combat\)|Información \(combate\)|Registro de Lutas)\] /
+  );
+  if (parts.length < 2) return;
+  const content = parts[1].trim();
 
-    // 2. DAMAGE PARSING (With dot support and Element Normalization)
-    const dmgMatch = content.match(new RegExp(`^(.*?): -(${numPattern}) (?:${hpUnits}).*? \\((.*?)\\)(?: \\((.*?)\\))?`));
-    if (dmgMatch) {
-        let amount = parseInt(dmgMatch[2].replace(/[,.\s]/g, ''), 10);
-        let element = normalizeElement(dmgMatch[3]);
-        let spellOverride = dmgMatch[4]; 
-        
-        if (!isNaN(amount)) {
-            const finalSpell = spellOverride || currentSpell;
-            updateCombatData(fightData, currentCaster, finalSpell, amount, element);
-            lastCombatTime = Date.now();
-            updateWatchdogUI();
-        }
-        return;
-    }
+  // 1. CAST DETECTION
+  // Handles: casts, lance (le sort), lanza (el hechizo), lança (o feitiço)
+  const castMatch = content.match(
+    /^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/
+  );
+  if (castMatch) {
+    currentCaster = castMatch[1].trim();
+    currentSpell = castMatch[2].trim();
+    detectClass(currentCaster, currentSpell);
+    return;
+  }
 
-    // 3. ARMOR PARSING
-    const armorMatch = content.match(new RegExp(`^(.*?): (${numPattern}) (?:${armorUnits})(?: \\((.*?)\\))?`));
-    if (armorMatch) {
-        let player = armorMatch[1];
-        let amount = parseInt(armorMatch[2].replace(/[,.\s]/g, ''), 10);
-        let source = armorMatch[3] || "Unknown Source";
-        
-        if (!isNaN(amount) && amount > 0) {
-            updateCombatData(armorData, player, source, amount, null);
-            lastCombatTime = Date.now();
-            updateWatchdogUI();
-        }
-        return;
-    }
+  // 2. DAMAGE PARSING (With dot support and Element Normalization)
+  const dmgMatch = content.match(
+    new RegExp(
+      `^(.*?): -(${numPattern}) (?:${hpUnits}).*? \\((.*?)\\)(?: \\((.*?)\\))?`
+    )
+  );
+  if (dmgMatch) {
+    let amount = parseInt(dmgMatch[2].replace(/[,.\s]/g, ""), 10);
+    let element = normalizeElement(dmgMatch[3]);
+    let spellOverride = dmgMatch[4];
 
-    // 4. HEALING PARSING
-    const healMatch = content.match(new RegExp(`^(.*?): \\+(${numPattern}) (?:${hpUnits})(.*)$`));
-    if (healMatch) {
-        let player = healMatch[1];
-        let amount = parseInt(healMatch[2].replace(/[,.\s]/g, ''), 10);
-        let remainder = healMatch[3].trim();
-        
-        if (!isNaN(amount) && amount > 0) {
-            let element = null;
-            let actualSpell = currentSpell;
-            const detailsMatch = remainder.match(/^\((.+?)\)(?: \((.+?)\))?$/);
-            if (detailsMatch) {
-                element = normalizeElement(detailsMatch[1]);
-                if (detailsMatch[2]) actualSpell = detailsMatch[2];
-            }
-            updateCombatData(healData, currentCaster, actualSpell, amount, element);
-            lastCombatTime = Date.now();
-            updateWatchdogUI();
-        }
-        return; 
+    if (!isNaN(amount)) {
+      const finalSpell = spellOverride || currentSpell;
+      updateCombatData(fightData, currentCaster, finalSpell, amount, element);
+      lastCombatTime = Date.now();
+      updateWatchdogUI();
     }
+    return;
+  }
 
-    // 5. SIMPLE DAMAGE FALLBACK
-    const simpleDmgMatch = content.match(new RegExp(`^(.*?): -(${numPattern}) (?:${hpUnits})`));
-    if (simpleDmgMatch) {
-        let amount = parseInt(simpleDmgMatch[2].replace(/[,.\s]/g, ''), 10);
-        if (!isNaN(amount)) {
-            updateCombatData(fightData, currentCaster, currentSpell, amount, null);
-            lastCombatTime = Date.now();
-            updateWatchdogUI();
-        }
-        return;
+  // 3. ARMOR PARSING
+  const armorMatch = content.match(
+    new RegExp(`^(.*?): (${numPattern}) (?:${armorUnits})(?: \\((.*?)\\))?`)
+  );
+  if (armorMatch) {
+    let player = armorMatch[1];
+    let amount = parseInt(armorMatch[2].replace(/[,.\s]/g, ""), 10);
+    let source = armorMatch[3] || "Unknown Source";
+
+    if (!isNaN(amount) && amount > 0) {
+      updateCombatData(armorData, player, source, amount, null);
+      lastCombatTime = Date.now();
+      updateWatchdogUI();
     }
+    return;
+  }
+
+  // 4. HEALING PARSING
+  const healMatch = content.match(
+    new RegExp(`^(.*?): \\+(${numPattern}) (?:${hpUnits})(.*)$`)
+  );
+  if (healMatch) {
+    let player = healMatch[1];
+    let amount = parseInt(healMatch[2].replace(/[,.\s]/g, ""), 10);
+    let remainder = healMatch[3].trim();
+
+    if (!isNaN(amount) && amount > 0) {
+      let element = null;
+      let actualSpell = currentSpell;
+      const detailsMatch = remainder.match(/^\((.+?)\)(?: \((.+?)\))?$/);
+      if (detailsMatch) {
+        element = normalizeElement(detailsMatch[1]);
+        if (detailsMatch[2]) actualSpell = detailsMatch[2];
+      }
+      updateCombatData(healData, currentCaster, actualSpell, amount, element);
+      lastCombatTime = Date.now();
+      updateWatchdogUI();
+    }
+    return;
+  }
+
+  // 5. SIMPLE DAMAGE FALLBACK
+  const simpleDmgMatch = content.match(
+    new RegExp(`^(.*?): -(${numPattern}) (?:${hpUnits})`)
+  );
+  if (simpleDmgMatch) {
+    let amount = parseInt(simpleDmgMatch[2].replace(/[,.\s]/g, ""), 10);
+    if (!isNaN(amount)) {
+      updateCombatData(fightData, currentCaster, currentSpell, amount, null);
+      lastCombatTime = Date.now();
+      updateWatchdogUI();
+    }
+    return;
+  }
 }
 
 function updateCombatData(dataSet, player, spell, amount, element) {
-    if (!dataSet[player]) dataSet[player] = { name: player, total: 0, spells: {} };
-    dataSet[player].total += amount;
-    
-    const spellKey = `${spell}|${element || 'neutral'}`;
-    if (!dataSet[player].spells[spellKey]) {
-        dataSet[player].spells[spellKey] = { val: 0, element: element, realName: spell };
-    }
-    dataSet[player].spells[spellKey].val += amount;
+  if (!dataSet[player])
+    dataSet[player] = { name: player, total: 0, spells: {} };
+  dataSet[player].total += amount;
+
+  const spellKey = `${spell}|${element || "neutral"}`;
+  if (!dataSet[player].spells[spellKey]) {
+    dataSet[player].spells[spellKey] = {
+      val: 0,
+      element: element,
+      realName: spell,
+    };
+  }
+  dataSet[player].spells[spellKey].val += amount;
 }
 
 function togglePlayer(name) {
-    if (expandedPlayers.has(name)) expandedPlayers.delete(name);
-    else expandedPlayers.add(name);
-    renderMeter();
+  if (expandedPlayers.has(name)) expandedPlayers.delete(name);
+  else expandedPlayers.add(name);
+  renderMeter();
 }
 
 function expandAll() {
-    let dataSet;
-    if (activeMeterMode === 'damage') dataSet = fightData;
-    else if (activeMeterMode === 'healing') dataSet = healData;
-    else dataSet = armorData;
+  let dataSet;
+  if (activeMeterMode === "damage") dataSet = fightData;
+  else if (activeMeterMode === "healing") dataSet = healData;
+  else dataSet = armorData;
 
-    Object.keys(dataSet).forEach(name => expandedPlayers.add(name));
-    renderMeter();
+  Object.keys(dataSet).forEach((name) => expandedPlayers.add(name));
+  renderMeter();
 }
 
 function collapseAll() {
-    expandedPlayers.clear();
-    renderMeter();
+  expandedPlayers.clear();
+  renderMeter();
 }
 
 // Helper: Determine if a player object belongs to Allies or Enemies
 function isPlayerAlly(p) {
-    // 1. Manual Override
-    if (manualOverrides[p.name]) {
-        return manualOverrides[p.name] === 'ally';
-    }
-    // 2. Logic Detection
-    const hasClass = !!playerClasses[p.name];
-    const isSummon = typeof allySummons !== 'undefined' && allySummons.includes(p.name);
-    const isEnemyDB = typeof wakfuEnemies !== 'undefined' && wakfuEnemies.some(fam => p.name.includes(fam));
+  // 1. Manual Override
+  if (manualOverrides[p.name]) {
+    return manualOverrides[p.name] === "ally";
+  }
+  // 2. Logic Detection
+  const hasClass = !!playerClasses[p.name];
+  const isSummon =
+    typeof allySummons !== "undefined" && allySummons.includes(p.name);
+  const isEnemyDB =
+    typeof wakfuEnemies !== "undefined" &&
+    wakfuEnemies.some((fam) => p.name.includes(fam));
 
-    if (hasClass || isSummon) return true;
-    if (isEnemyDB) return false;
-    
-    return false; // Default to Enemy for unknowns
+  if (hasClass || isSummon) return true;
+  if (isEnemyDB) return false;
+
+  return false; // Default to Enemy for unknowns
 }
 
 // New Function: Expand or Collapse specific category
 function modifyExpansion(category, action) {
-    // Determine which dataset we are currently looking at
-    let dataSet;
-    if (activeMeterMode === 'damage') dataSet = fightData;
-    else if (activeMeterMode === 'healing') dataSet = healData;
-    else dataSet = armorData;
+  // Determine which dataset we are currently looking at
+  let dataSet;
+  if (activeMeterMode === "damage") dataSet = fightData;
+  else if (activeMeterMode === "healing") dataSet = healData;
+  else dataSet = armorData;
 
-    const players = Object.values(dataSet);
-    
-    players.forEach(p => {
-        const isAlly = isPlayerAlly(p);
-        
-        // Match player to the clicked header (Allies vs Enemies)
-        if ((category === 'allies' && isAlly) || (category === 'enemies' && !isAlly)) {
-            if (action === 'expand') {
-                expandedPlayers.add(p.name);
-            } else {
-                expandedPlayers.delete(p.name);
-            }
-        }
-    });
+  const players = Object.values(dataSet);
 
-    // Re-render to show changes
-    renderMeter();
+  players.forEach((p) => {
+    const isAlly = isPlayerAlly(p);
+
+    // Match player to the clicked header (Allies vs Enemies)
+    if (
+      (category === "allies" && isAlly) ||
+      (category === "enemies" && !isAlly)
+    ) {
+      if (action === "expand") {
+        expandedPlayers.add(p.name);
+      } else {
+        expandedPlayers.delete(p.name);
+      }
+    }
+  });
+
+  // Re-render to show changes
+  renderMeter();
 }
 
 function performReset() {
-    fightData = {};
-    healData = {};
-    armorData = {}; 
-    playerClasses = {}; 
-    playerIconCache = {}; 
-    playerVariantState = {}; // Reset gender toggles
-    manualOverrides = {}; 
-    currentCaster = "Unknown";
-    currentSpell = "Unknown Spell";
-    renderMeter();
-    updateWatchdogUI();
+  fightData = {};
+  healData = {};
+  armorData = {};
+  playerClasses = {};
+  playerIconCache = {};
+  playerVariantState = {}; // Reset gender toggles
+  manualOverrides = {};
+  currentCaster = "Unknown";
+  currentSpell = "Unknown Spell";
+  renderMeter();
+  updateWatchdogUI();
 }
 
-document.getElementById('resetBtn').addEventListener('click', performReset);
+document.getElementById("resetBtn").addEventListener("click", performReset);
 
 // ==========================================
 // RENDER METER
 // ==========================================
 function renderMeter() {
-    let dataSet;
-    if (activeMeterMode === 'damage') dataSet = fightData;
-    else if (activeMeterMode === 'healing') dataSet = healData;
-    else dataSet = armorData;
+  let dataSet;
+  if (activeMeterMode === "damage") dataSet = fightData;
+  else if (activeMeterMode === "healing") dataSet = healData;
+  else dataSet = armorData;
 
-    const players = Object.values(dataSet);
-    
-    // Use getUI instead of document.getElementById
-    const alliesContainer = getUI('list-allies');
-    const enemiesContainer = getUI('list-enemies');
-    const alliesTotalEl = getUI('allies-total-val');
-    const enemiesTotalEl = getUI('enemies-total-val');
+  const players = Object.values(dataSet);
 
-    if (!alliesContainer || !enemiesContainer) return; // Guard for PiP transition
+  // Use getUI instead of document.getElementById
+  const alliesContainer = getUI("list-allies");
+  const enemiesContainer = getUI("list-enemies");
+  const alliesTotalEl = getUI("allies-total-val");
+  const enemiesTotalEl = getUI("enemies-total-val");
 
-    if (players.length === 0) {
-        alliesContainer.innerHTML = `<div class="empty-state">Waiting for combat...</div>`;
-        enemiesContainer.innerHTML = "";
-        alliesTotalEl.textContent = "0";
-        enemiesTotalEl.textContent = "0";
-        return;
+  if (!alliesContainer || !enemiesContainer) return; // Guard for PiP transition
+
+  if (players.length === 0) {
+    alliesContainer.innerHTML = `<div class="empty-state">Waiting for combat...</div>`;
+    enemiesContainer.innerHTML = "";
+    alliesTotalEl.textContent = "0";
+    enemiesTotalEl.textContent = "0";
+    return;
+  }
+
+  const allies = [];
+  const enemies = [];
+
+  players.forEach((p) => {
+    if (isPlayerAlly(p)) {
+      allies.push(p);
+    } else {
+      enemies.push(p);
+    }
+  });
+
+  const totalAllyVal = allies.reduce((acc, p) => acc + p.total, 0);
+  const totalEnemyVal = enemies.reduce((acc, p) => acc + p.total, 0);
+
+  alliesTotalEl.textContent = totalAllyVal.toLocaleString();
+  enemiesTotalEl.textContent = totalEnemyVal.toLocaleString();
+
+  allies.sort((a, b) => b.total - a.total);
+  enemies.sort((a, b) => b.total - a.total);
+
+  const renderList = (list, container, categoryTotal) => {
+    container.innerHTML = "";
+    if (list.length === 0) {
+      container.innerHTML =
+        '<div style="padding:10px;color:#555;font-style:italic;text-align:center;">None</div>';
+      return;
     }
 
-    const allies = [];
-    const enemies = [];
+    const maxVal = list[0].total;
 
-    players.forEach(p => {
-        if (isPlayerAlly(p)) {
-            allies.push(p);
-        } else {
-            enemies.push(p);
-        }
-    });
+    list.forEach((p) => {
+      const barPercent = (p.total / maxVal) * 100;
+      const totalPercent =
+        categoryTotal > 0
+          ? ((p.total / categoryTotal) * 100).toFixed(1) + "%"
+          : "0.0%";
+      const isExpanded = expandedPlayers.has(p.name);
 
-    const totalAllyVal = allies.reduce((acc, p) => acc + p.total, 0);
-    const totalEnemyVal = enemies.reduce((acc, p) => acc + p.total, 0);
+      // --- ICON OPTIMIZATION ---
+      let iconHtml = playerIconCache[p.name];
 
-    alliesTotalEl.textContent = totalAllyVal.toLocaleString();
-    enemiesTotalEl.textContent = totalEnemyVal.toLocaleString();
+      if (!iconHtml) {
+        const classIconName = playerClasses[p.name];
 
-    allies.sort((a, b) => b.total - a.total);
-    enemies.sort((a, b) => b.total - a.total);
+        if (classIconName) {
+          // Check persistent state for gender
+          const isAlt = playerVariantState[p.name];
+          const currentSrc = isAlt
+            ? `./img/classes/${classIconName}-f.png`
+            : `./img/classes/${classIconName}.png`;
 
-    const renderList = (list, container, categoryTotal) => {
-        container.innerHTML = "";
-        if(list.length === 0) {
-            container.innerHTML = '<div style="padding:10px;color:#555;font-style:italic;text-align:center;">None</div>';
-            return;
-        }
-
-        const maxVal = list[0].total; 
-
-        list.forEach(p => {
-            const barPercent = (p.total / maxVal) * 100; 
-            const totalPercent = (categoryTotal > 0) ? ((p.total / categoryTotal) * 100).toFixed(1) + "%" : "0.0%";
-            const isExpanded = expandedPlayers.has(p.name);
-            
-            // --- ICON OPTIMIZATION ---
-            let iconHtml = playerIconCache[p.name];
-
-            if (!iconHtml) {
-                const classIconName = playerClasses[p.name];
-                
-                if (classIconName) {
-                    // Check persistent state for gender
-                    const isAlt = playerVariantState[p.name]; 
-                    const currentSrc = isAlt ? `./img/classes/${classIconName}-f.png` : `./img/classes/${classIconName}.png`;
-
-                    // Generate HTML with persistent toggle handler
-                    iconHtml = `<img src="${currentSrc}" 
+          // Generate HTML with persistent toggle handler
+          iconHtml = `<img src="${currentSrc}" 
                                      class="class-icon" 
                                      title="${classIconName}" 
-                                     onmouseover="toggleIconVariant('${p.name.replace(/'/g, "\\'")}', this)" 
+                                     onmouseover="toggleIconVariant('${p.name.replace(
+                                       /'/g,
+                                       "\\'"
+                                     )}', this)" 
                                      onerror="this.src='./img/classes/not_found.png'; this.onerror=null;">`;
-                } else {
-                    // Creature logic
-                    const safeName = p.name.replace(/\s+/g, '_');
-                    iconHtml = `<img src="./img/creatures/100px-${safeName}.png" class="class-icon" onerror="this.src='./img/classes/not_found.png'; this.onerror=null;">`;
-                }
-                
-                playerIconCache[p.name] = iconHtml;
-            }
-            // --- END ICON OPTIMIZATION ---
-            
-            // --- DRAG & DROP SETUP ---
-            // -------------------------
-    
-            const rowBlock = document.createElement('div');
-            rowBlock.className = `player-block ${isExpanded ? 'expanded' : ''}`;
-            rowBlock.setAttribute('draggable', 'true');
-            
-            rowBlock.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', p.name);
-                rowBlock.style.opacity = '0.5';
-            });
-            rowBlock.addEventListener('dragend', (e) => {
-                rowBlock.style.opacity = '1';
-            });
-            
-            let barClass, textClass;
-            if (activeMeterMode === 'damage') {
-                barClass = 'damage-bar'; textClass = 'damage-text';
-            } else if (activeMeterMode === 'healing') {
-                barClass = 'healing-bar'; textClass = 'healing-text';
-            } else {
-                barClass = 'armor-bar'; textClass = 'armor-text';
-            }
-    
-            const mainRow = document.createElement('div');
-            mainRow.className = 'player-row';
-            mainRow.onclick = () => togglePlayer(p.name);
-            
-            mainRow.innerHTML = `
+        } else {
+          // Creature logic
+          const safeName = p.name.replace(/\s+/g, "_");
+          iconHtml = `<img src="./img/creatures/100px-${safeName}.png" class="class-icon" onerror="this.src='./img/classes/not_found.png'; this.onerror=null;">`;
+        }
+
+        playerIconCache[p.name] = iconHtml;
+      }
+      // --- END ICON OPTIMIZATION ---
+
+      // --- DRAG & DROP SETUP ---
+      // -------------------------
+
+      const rowBlock = document.createElement("div");
+      rowBlock.className = `player-block ${isExpanded ? "expanded" : ""}`;
+      rowBlock.setAttribute("draggable", "true");
+
+      rowBlock.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", p.name);
+        rowBlock.style.opacity = "0.5";
+      });
+      rowBlock.addEventListener("dragend", (e) => {
+        rowBlock.style.opacity = "1";
+      });
+
+      let barClass, textClass;
+      if (activeMeterMode === "damage") {
+        barClass = "damage-bar";
+        textClass = "damage-text";
+      } else if (activeMeterMode === "healing") {
+        barClass = "healing-bar";
+        textClass = "healing-text";
+      } else {
+        barClass = "armor-bar";
+        textClass = "armor-text";
+      }
+
+      const mainRow = document.createElement("div");
+      mainRow.className = "player-row";
+      mainRow.onclick = () => togglePlayer(p.name);
+
+      mainRow.innerHTML = `
                 <div class="player-bg-bar ${barClass}" style="width: ${barPercent}%"></div>
                 <div class="player-name">
                     <span class="caret">▶</span>
@@ -1154,34 +1284,44 @@ function renderMeter() {
                 <div class="player-total ${textClass}">${p.total.toLocaleString()}</div>
                 <div class="player-percent">${totalPercent}</div>
             `;
-            rowBlock.appendChild(mainRow);
-    
-            if (isExpanded) {
-                const spellContainer = document.createElement('div');
-                spellContainer.className = 'spell-list open';
-                
-                const spells = Object.entries(p.spells).map(([key, data]) => ({ 
-                    key, 
-                    val: data.val, 
-                    element: data.element,
-                    realName: data.realName || key.split('|')[0] 
-                })).sort((a, b) => b.val - a.val);
-                
-                spells.forEach(s => {
-                    const spellBarPercent = (s.val / p.total) * 100; 
-                    const spellContribPercent = (p.total > 0) ? ((s.val / p.total) * 100).toFixed(1) + "%" : "0.0%";
-    
-                    const spellRow = document.createElement('div');
-                    spellRow.className = 'spell-row';
-                    
-                    const validElements = ['Fire', 'Water', 'Earth', 'Air', 'Stasis', 'Light'];
-                    let iconName = 'neutral';
-                    if (s.element && validElements.includes(s.element)) {
-                        iconName = s.element.toLowerCase();
-                    }
-                    const iconHtml = `<img src="./img/elements/${iconName}.png" class="spell-icon" onerror="this.src='./img/elements/neutral.png'">`;
-    
-                    spellRow.innerHTML = `
+      rowBlock.appendChild(mainRow);
+
+      if (isExpanded) {
+        const spellContainer = document.createElement("div");
+        spellContainer.className = "spell-list open";
+
+        const spells = Object.entries(p.spells)
+          .map(([key, data]) => ({
+            key,
+            val: data.val,
+            element: data.element,
+            realName: data.realName || key.split("|")[0],
+          }))
+          .sort((a, b) => b.val - a.val);
+
+        spells.forEach((s) => {
+          const spellBarPercent = (s.val / p.total) * 100;
+          const spellContribPercent =
+            p.total > 0 ? ((s.val / p.total) * 100).toFixed(1) + "%" : "0.0%";
+
+          const spellRow = document.createElement("div");
+          spellRow.className = "spell-row";
+
+          const validElements = [
+            "Fire",
+            "Water",
+            "Earth",
+            "Air",
+            "Stasis",
+            "Light",
+          ];
+          let iconName = "neutral";
+          if (s.element && validElements.includes(s.element)) {
+            iconName = s.element.toLowerCase();
+          }
+          const iconHtml = `<img src="./img/elements/${iconName}.png" class="spell-icon" onerror="this.src='./img/elements/neutral.png'">`;
+
+          spellRow.innerHTML = `
                         <div class="spell-bg-bar" style="width: ${spellBarPercent}%"></div>
                         <div class="spell-info">
                             ${iconHtml}
@@ -1190,308 +1330,393 @@ function renderMeter() {
                         <div class="spell-val">${s.val.toLocaleString()}</div>
                         <div class="spell-percent">${spellContribPercent}</div>
                     `;
-                    spellContainer.appendChild(spellRow);
-                });
-                rowBlock.appendChild(spellContainer);
-            }
-            container.appendChild(rowBlock);
+          spellContainer.appendChild(spellRow);
         });
-    };
+        rowBlock.appendChild(spellContainer);
+      }
+      container.appendChild(rowBlock);
+    });
+  };
 
-    renderList(allies, alliesContainer, totalAllyVal);
-    renderList(enemies, enemiesContainer, totalEnemyVal);
+  renderList(allies, alliesContainer, totalAllyVal);
+  renderList(enemies, enemiesContainer, totalEnemyVal);
 }
 
 // ==========================================
 // CHAT TRANSLATOR LOGIC
 // ==========================================
 const CHAT_COLORS = {
-    "Vicinity": "#cccccc", "Private": "#00e1ff", "Group": "#aa66ff", "Guild": "#ffaa00",
-    "Trade": "#dd7700", "Politics": "#ffff00", "PvP": "#00aaaa", 
-    "Community": "#3366ff", "Recruitment": "#ff2255", "Default": "#888888"
+  Vicinity: "#cccccc",
+  Private: "#00e1ff",
+  Group: "#aa66ff",
+  Guild: "#ffaa00",
+  Trade: "#dd7700",
+  Politics: "#ffff00",
+  PvP: "#00aaaa",
+  Community: "#3366ff",
+  Recruitment: "#ff2255",
+  Default: "#888888",
 };
 
 function getChannelColor(channelName) {
-    if (channelName.includes("Vicinity")) return CHAT_COLORS.Vicinity;
-    if (channelName.includes("Private") || channelName.includes("Whisper")) return CHAT_COLORS.Private;
-    if (channelName.includes("Group")) return CHAT_COLORS.Group;
-    if (channelName.includes("Guild")) return CHAT_COLORS.Guild;
-    if (channelName.includes("Trade")) return CHAT_COLORS.Trade;
-    if (channelName.includes("Politics")) return CHAT_COLORS.Politics;
-    if (channelName.includes("PvP")) return CHAT_COLORS.PvP;
-    if (channelName.includes("Community")) return CHAT_COLORS.Community;
-    if (channelName.includes("Recruitment")) return CHAT_COLORS.Recruitment;
-    return CHAT_COLORS.Default;
+  if (channelName.includes("Vicinity")) return CHAT_COLORS.Vicinity;
+  if (channelName.includes("Private") || channelName.includes("Whisper"))
+    return CHAT_COLORS.Private;
+  if (channelName.includes("Group")) return CHAT_COLORS.Group;
+  if (channelName.includes("Guild")) return CHAT_COLORS.Guild;
+  if (channelName.includes("Trade")) return CHAT_COLORS.Trade;
+  if (channelName.includes("Politics")) return CHAT_COLORS.Politics;
+  if (channelName.includes("PvP")) return CHAT_COLORS.PvP;
+  if (channelName.includes("Community")) return CHAT_COLORS.Community;
+  if (channelName.includes("Recruitment")) return CHAT_COLORS.Recruitment;
+  return CHAT_COLORS.Default;
 }
 
 function formatLocalTime(rawTimeStr) {
-    const [hours, mins] = rawTimeStr.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(mins), 0);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const [hours, mins] = rawTimeStr.split(":");
+  const date = new Date();
+  date.setHours(parseInt(hours), parseInt(mins), 0);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function processChatLog(line) {
-    const parts = line.split(" - ");
-    if (parts.length < 2) return;
-    const localTime = formatLocalTime(parts[0].split(",")[0]); 
-    const rest = parts.slice(1).join(" - ");
+  const parts = line.split(" - ");
+  if (parts.length < 2) return;
+  const localTime = formatLocalTime(parts[0].split(",")[0]);
+  const rest = parts.slice(1).join(" - ");
 
-    let channel = "General";
-    let author = "";
-    let message = rest;
+  let channel = "General";
+  let author = "";
+  let message = rest;
 
-    const bracketMatch = rest.match(/^\[(.*?)\] (.*)/);
-    if (bracketMatch) {
-        channel = bracketMatch[1];
-        const contentAfter = bracketMatch[2];
-        const authorSplit = contentAfter.indexOf(" : ");
-        if (authorSplit !== -1) {
-            author = contentAfter.substring(0, authorSplit);
-            message = contentAfter.substring(authorSplit + 3);
-        } else { message = contentAfter; }
+  const bracketMatch = rest.match(/^\[(.*?)\] (.*)/);
+  if (bracketMatch) {
+    channel = bracketMatch[1];
+    const contentAfter = bracketMatch[2];
+    const authorSplit = contentAfter.indexOf(" : ");
+    if (authorSplit !== -1) {
+      author = contentAfter.substring(0, authorSplit);
+      message = contentAfter.substring(authorSplit + 3);
     } else {
-        const authorSplit = rest.indexOf(" : ");
-        if (authorSplit !== -1) {
-            author = rest.substring(0, authorSplit);
-            message = rest.substring(authorSplit + 3);
-            if (channel === "General") channel = "Vicinity"; 
-        }
+      message = contentAfter;
     }
-    addChatMessage(localTime, channel, author, message);
+  } else {
+    const authorSplit = rest.indexOf(" : ");
+    if (authorSplit !== -1) {
+      author = rest.substring(0, authorSplit);
+      message = rest.substring(authorSplit + 3);
+      if (channel === "General") channel = "Vicinity";
+    }
+  }
+  addChatMessage(localTime, channel, author, message);
 }
 
 function setChatFilter(filter) {
-    currentChatFilter = filter;
-    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-    const btnId = 'filter' + (filter === 'all' ? 'ALL' : (filter === 'recruitment' ? 'RECRUIT' : filter === 'community' ? 'COMM' : filter.toUpperCase()));
-    const activeBtn = document.getElementById(btnId);
-    if(activeBtn) activeBtn.classList.add('active');
+  currentChatFilter = filter;
+  document
+    .querySelectorAll(".filter-btn")
+    .forEach((btn) => btn.classList.remove("active"));
+  const btnId =
+    "filter" +
+    (filter === "all"
+      ? "ALL"
+      : filter === "recruitment"
+      ? "RECRUIT"
+      : filter === "community"
+      ? "COMM"
+      : filter.toUpperCase());
+  const activeBtn = document.getElementById(btnId);
+  if (activeBtn) activeBtn.classList.add("active");
 
-    const messages = document.querySelectorAll('.chat-msg');
-    messages.forEach(msg => {
-        const cat = msg.getAttribute('data-category');
-        if (cat === 'vicinity' || cat === 'private') {
-            msg.style.display = 'block';
-        } else if (currentChatFilter === 'all') {
-            msg.style.display = 'block';
-        } else {
-            if (cat === currentChatFilter) msg.style.display = 'block';
-            else msg.style.display = 'none';
-        }
-    });
-    chatList.scrollTop = chatList.scrollHeight;
+  const messages = document.querySelectorAll(".chat-msg");
+  messages.forEach((msg) => {
+    const cat = msg.getAttribute("data-category");
+    if (cat === "vicinity" || cat === "private") {
+      msg.style.display = "block";
+    } else if (currentChatFilter === "all") {
+      msg.style.display = "block";
+    } else {
+      if (cat === currentChatFilter) msg.style.display = "block";
+      else msg.style.display = "none";
+    }
+  });
+  chatList.scrollTop = chatList.scrollHeight;
 }
 
 // CHAT CHANNEL CATEGORIES
 function getCategoryFromChannel(channelName) {
-    const lower = channelName.toLowerCase();
-    
-    // Vicinity: Vicinity, Proximité, Local, Vizinhança
-    if (lower.includes('vicinity') || lower.includes('proximit') || lower.includes('local') || lower.includes('vizinhança')) return 'vicinity';
-    
-    // Private: Private, Whisper, Privé, Privado
-    if (lower.includes('private') || lower.includes('whisper') || lower.includes('priv')) return 'private';
-    
-    // Group: Group, Groupe, Grupo
-    if (lower.includes('group') || lower.includes('groupe') || lower.includes('grupo')) return 'group';
-    
-    // Guild: Guild, Guilde, Gremio, Guilda
-    if (lower.includes('guild') || lower.includes('guilde') || lower.includes('gremio')) return 'guild';
-    
-    // Trade: Trade, Commerce, Comercio, Comércio
-    if (lower.includes('trade') || lower.includes('commerce') || lower.includes('comercio')) return 'trade';
-    
-    // Community: Community, Communauté, Comunidad, Comunidade
-    if (lower.includes('community') || lower.includes('communaut') || lower.includes('comunidad') || lower.includes('comunidade')) return 'community';
-    
-    // Recruitment: Recruitment, Recrutement, Reclutamiento, Recrutamento
-    if (lower.includes('recruitment') || lower.includes('recrutement') || lower.includes('reclutamiento') || lower.includes('recrutamento')) return 'recruitment';
-    
-    // Politics: Politics, Politique, Política
-    if (lower.includes('politic')) return 'politics';
+  const lower = channelName.toLowerCase();
 
-    // PvP: PvP, JcJ, Camp
-    if (lower.includes('pvp') || lower.includes('jcj') || lower.includes('camp')) return 'pvp';
+  // Vicinity: Vicinity, Proximité, Local, Vizinhança
+  if (
+    lower.includes("vicinity") ||
+    lower.includes("proximit") ||
+    lower.includes("local") ||
+    lower.includes("vizinhança")
+  )
+    return "vicinity";
 
-    return 'other'; 
+  // Private: Private, Whisper, Privé, Privado
+  if (
+    lower.includes("private") ||
+    lower.includes("whisper") ||
+    lower.includes("priv")
+  )
+    return "private";
+
+  // Group: Group, Groupe, Grupo
+  if (
+    lower.includes("group") ||
+    lower.includes("groupe") ||
+    lower.includes("grupo")
+  )
+    return "group";
+
+  // Guild: Guild, Guilde, Gremio, Guilda
+  if (
+    lower.includes("guild") ||
+    lower.includes("guilde") ||
+    lower.includes("gremio")
+  )
+    return "guild";
+
+  // Trade: Trade, Commerce, Comercio, Comércio
+  if (
+    lower.includes("trade") ||
+    lower.includes("commerce") ||
+    lower.includes("comercio")
+  )
+    return "trade";
+
+  // Community: Community, Communauté, Comunidad, Comunidade
+  if (
+    lower.includes("community") ||
+    lower.includes("communaut") ||
+    lower.includes("comunidad") ||
+    lower.includes("comunidade")
+  )
+    return "community";
+
+  // Recruitment: Recruitment, Recrutement, Reclutamiento, Recrutamento
+  if (
+    lower.includes("recruitment") ||
+    lower.includes("recrutement") ||
+    lower.includes("reclutamiento") ||
+    lower.includes("recrutamento")
+  )
+    return "recruitment";
+
+  // Politics: Politics, Politique, Política
+  if (lower.includes("politic")) return "politics";
+
+  // PvP: PvP, JcJ, Camp
+  if (lower.includes("pvp") || lower.includes("jcj") || lower.includes("camp"))
+    return "pvp";
+
+  return "other";
 }
 
 function getChannelColor(category) {
-    const map = {
-        'vicinity': CHAT_COLORS.Vicinity,
-        'private': CHAT_COLORS.Private,
-        'group': CHAT_COLORS.Group,
-        'guild': CHAT_COLORS.Guild,
-        'trade': CHAT_COLORS.Trade,
-        'politics': CHAT_COLORS.Politics,
-        'pvp': CHAT_COLORS.PvP,
-        'community': CHAT_COLORS.Community,
-        'recruitment': CHAT_COLORS.Recruitment
-    };
-    return map[category] || CHAT_COLORS.Default;
+  const map = {
+    vicinity: CHAT_COLORS.Vicinity,
+    private: CHAT_COLORS.Private,
+    group: CHAT_COLORS.Group,
+    guild: CHAT_COLORS.Guild,
+    trade: CHAT_COLORS.Trade,
+    politics: CHAT_COLORS.Politics,
+    pvp: CHAT_COLORS.PvP,
+    community: CHAT_COLORS.Community,
+    recruitment: CHAT_COLORS.Recruitment,
+  };
+  return map[category] || CHAT_COLORS.Default;
 }
 
 function addChatMessage(time, channel, author, message) {
-    const emptyState = chatList.querySelector('.empty-state');
-    if (emptyState) chatList.innerHTML = '';
+  const emptyState = chatList.querySelector(".empty-state");
+  if (emptyState) chatList.innerHTML = "";
 
-    const div = document.createElement('div');
-    div.className = 'chat-msg';
-    
-    // 1. Get Category (Multi-language logic)
-    const category = getCategoryFromChannel(channel);
-    div.setAttribute('data-category', category); 
+  const div = document.createElement("div");
+  div.className = "chat-msg";
 
-    // 2. Get Color based on that Category
-    const color = getChannelColor(category);
-    
-    if (currentChatFilter !== 'all' && category !== 'vicinity' && category !== 'private' && category !== currentChatFilter) {
-        div.style.display = 'none';
-    }
+  // 1. Get Category (Multi-language logic)
+  const category = getCategoryFromChannel(channel);
+  div.setAttribute("data-category", category);
 
-    const transId = 'trans-' + Date.now() + '-' + Math.floor(Math.random()*1000);
-    const channelTag = `[${channel}]`;
+  // 2. Get Color based on that Category
+  const color = getChannelColor(category);
 
-    div.innerHTML = `
+  if (
+    currentChatFilter !== "all" &&
+    category !== "vicinity" &&
+    category !== "private" &&
+    category !== currentChatFilter
+  ) {
+    div.style.display = "none";
+  }
+
+  const transId =
+    "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+  const channelTag = `[${channel}]`;
+
+  div.innerHTML = `
         <div class="chat-meta">
             <span class="chat-time">${time}</span>
             <span class="chat-channel" style="color:${color}">${channelTag}</span>
             <span class="chat-author" style="color:${color}">${author}</span>
-            <button class="manual-trans-btn" onclick="queueTranslation('${message.replace(/'/g, "\\'")}', '${transId}', true)">T</button>
+            <button class="manual-trans-btn" onclick="queueTranslation('${message.replace(
+              /'/g,
+              "\\'"
+            )}', '${transId}', true)">T</button>
         </div>
         <div class="chat-content">${message}</div>
         <div id="${transId}" class="translated-block" style="display:none;"></div>
     `;
-    
-    chatList.appendChild(div);
-    chatList.scrollTop = chatList.scrollHeight;
 
-    // Translation logic
-    if (transConfig.enabled) {
-        if (channel.includes("(PT)") && !transConfig.pt) return;
-        if (channel.includes("(FR)") && !transConfig.fr) return;
-        if (channel.includes("(ES)") && !transConfig.es) return;
-        queueTranslation(message, transId, false);
-    }
+  chatList.appendChild(div);
+  chatList.scrollTop = chatList.scrollHeight;
+
+  // Translation logic
+  if (transConfig.enabled) {
+    if (channel.includes("(PT)") && !transConfig.pt) return;
+    if (channel.includes("(FR)") && !transConfig.fr) return;
+    if (channel.includes("(ES)") && !transConfig.es) return;
+    queueTranslation(message, transId, false);
+  }
 }
 
 function queueTranslation(text, elementId, isManual) {
-    translationQueue.push({ text, elementId, isManual });
-    processTranslationQueue();
+  translationQueue.push({ text, elementId, isManual });
+  processTranslationQueue();
 }
 
 async function processTranslationQueue() {
-    if (isTranslating || translationQueue.length === 0) return;
-    
-    const item = translationQueue[0];
+  if (isTranslating || translationQueue.length === 0) return;
 
-    if (!transConfig.enabled && !item.isManual) {
-        translationQueue.length = 0; 
-        return;
-    }
+  const item = translationQueue[0];
 
-    isTranslating = true;
-    translationQueue.shift(); 
-    
-    try {
-        if (item.text.length < 500) {
-            const result = await fetchTranslation(item.text);
-            if (result) {
-                const l = result.lang.toLowerCase(); 
-                let show = false;
+  if (!transConfig.enabled && !item.isManual) {
+    translationQueue.length = 0;
+    return;
+  }
 
-                if (item.isManual) {
-                    show = true;
-                } else {
-                    if (transConfig.pt && (l === 'pt' || l.startsWith('pt-'))) show = true;
-                    else if (transConfig.fr && (l === 'fr' || l.startsWith('fr-'))) show = true;
-                    else if (transConfig.es && (l === 'es' || l.startsWith('es-'))) show = true;
-                    else if (l === 'en' || l.startsWith('en-')) show = false; 
-                    else if (transConfig.others) {
-                        if (!l.startsWith('pt') && !l.startsWith('fr') && !l.startsWith('es')) show = true;
-                    }
-                }
+  isTranslating = true;
+  translationQueue.shift();
 
-                if (show) {
-                    const el = document.getElementById(item.elementId);
-                    if (el) {
-                        el.style.display = 'flex';
-                        el.innerHTML = `<span class="trans-icon">文A</span> ${result.text}`;
-                    }
-                }
-            }
+  try {
+    if (item.text.length < 500) {
+      const result = await fetchTranslation(item.text);
+      if (result) {
+        const l = result.lang.toLowerCase();
+        let show = false;
+
+        if (item.isManual) {
+          show = true;
+        } else {
+          if (transConfig.pt && (l === "pt" || l.startsWith("pt-")))
+            show = true;
+          else if (transConfig.fr && (l === "fr" || l.startsWith("fr-")))
+            show = true;
+          else if (transConfig.es && (l === "es" || l.startsWith("es-")))
+            show = true;
+          else if (l === "en" || l.startsWith("en-")) show = false;
+          else if (transConfig.others) {
+            if (
+              !l.startsWith("pt") &&
+              !l.startsWith("fr") &&
+              !l.startsWith("es")
+            )
+              show = true;
+          }
         }
-    } catch (e) { }
 
-    isTranslating = false;
-    setTimeout(processTranslationQueue, 50); 
+        if (show) {
+          const el = document.getElementById(item.elementId);
+          if (el) {
+            el.style.display = "flex";
+            el.innerHTML = `<span class="trans-icon">文A</span> ${result.text}`;
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  isTranslating = false;
+  setTimeout(processTranslationQueue, 50);
 }
 
 async function fetchTranslation(text) {
-    const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
-    try {
-        const response = await fetch(sourceUrl);
-        const data = await response.json();
-        if (data) {
-            const translatedText = data[0].map(x => x[0]).join(''); 
-            const detectedLang = data[2]; 
-            return { text: translatedText, lang: detectedLang };
-        }
-    } catch (e) { return null; }
+  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(
+    text
+  )}`;
+  try {
+    const response = await fetch(sourceUrl);
+    const data = await response.json();
+    if (data) {
+      const translatedText = data[0].map((x) => x[0]).join("");
+      const detectedLang = data[2];
+      return { text: translatedText, lang: detectedLang };
+    }
+  } catch (e) {
     return null;
+  }
+  return null;
 }
 
-clearChatBtn.addEventListener('click', () => {
-    chatList.innerHTML = '<div class="empty-state">Chat cleared</div>';
+clearChatBtn.addEventListener("click", () => {
+  chatList.innerHTML = '<div class="empty-state">Chat cleared</div>';
 });
 
 // ==========================================
 // WATCHDOG (AUTO RESET)
 // ==========================================
-autoResetBtn.addEventListener('click', () => {
-    isAutoResetOn = !isAutoResetOn;
-    autoResetBtn.classList.toggle('active', isAutoResetOn);
-    updateWatchdogUI();
+autoResetBtn.addEventListener("click", () => {
+  isAutoResetOn = !isAutoResetOn;
+  autoResetBtn.classList.toggle("active", isAutoResetOn);
+  updateWatchdogUI();
 });
 
-timerInput.addEventListener('input', (e) => {
-    let val = parseInt(e.target.value, 10);
-    if (isNaN(val) || val < 5) val = 5;
-    resetDelayMs = val * 1000;
-    updateWatchdogUI();
+timerInput.addEventListener("input", (e) => {
+  let val = parseInt(e.target.value, 10);
+  if (isNaN(val) || val < 5) val = 5;
+  resetDelayMs = val * 1000;
+  updateWatchdogUI();
 });
 
 function startWatchdog() {
-    if (watchdogIntervalId) clearInterval(watchdogIntervalId);
-    watchdogIntervalId = setInterval(updateWatchdogUI, 500); 
+  if (watchdogIntervalId) clearInterval(watchdogIntervalId);
+  watchdogIntervalId = setInterval(updateWatchdogUI, 500);
 }
 
 function updateWatchdogUI() {
-    const formatTime = (ms) => {
-        const s = Math.ceil(ms / 1000);
-        return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
-    };
-    
-    // Check if any data exists
-    const hasData = Object.keys(fightData).length > 0 || Object.keys(healData).length > 0 || Object.keys(armorData).length > 0;
+  const formatTime = (ms) => {
+    const s = Math.ceil(ms / 1000);
+    return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
+  };
 
-    if (!isAutoResetOn || !hasData) {
-        autoResetText.textContent = `Auto Reset (${formatTime(resetDelayMs)})`;
-        return;
-    }
-    const remaining = resetDelayMs - (Date.now() - lastCombatTime);
-    if (remaining <= 0) {
-        performReset();
-        autoResetText.textContent = `Auto Reset (${formatTime(resetDelayMs)})`;
-    } else {
-        autoResetText.textContent = `Auto Reset (${formatTime(remaining)})`;
-    }
+  // Check if any data exists
+  const hasData =
+    Object.keys(fightData).length > 0 ||
+    Object.keys(healData).length > 0 ||
+    Object.keys(armorData).length > 0;
+
+  if (!isAutoResetOn || !hasData) {
+    autoResetText.textContent = `Auto Reset (${formatTime(resetDelayMs)})`;
+    return;
+  }
+  const remaining = resetDelayMs - (Date.now() - lastCombatTime);
+  if (remaining <= 0) {
+    performReset();
+    autoResetText.textContent = `Auto Reset (${formatTime(resetDelayMs)})`;
+  } else {
+    autoResetText.textContent = `Auto Reset (${formatTime(remaining)})`;
+  }
 }
 
 function updateButtonText() {
-    const s = parseInt(timerInput.value, 10);
-    autoResetText.textContent = `Auto Reset (${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')})`;
+  const s = parseInt(timerInput.value, 10);
+  autoResetText.textContent = `Auto Reset (${Math.floor(s / 60)}:${(s % 60)
+    .toString()
+    .padStart(2, "0")})`;
 }
 
 // ==========================================
@@ -1500,395 +1725,445 @@ function updateButtonText() {
 
 // DAILY RESET TIMER (Europe/Paris Timezone)
 function updateDailyTimer() {
-    const timerEl = document.getElementById('daily-val');
-    if (!timerEl) return;
+  const timerEl = document.getElementById("daily-val");
+  if (!timerEl) return;
 
-    // Get current time in Paris
-    const now = new Date();
-    // We use the Intl API to get the correct time in Paris handling DST automatically
-    const parisTimeStr = now.toLocaleString("en-US", { timeZone: "Europe/Paris" });
-    const parisDate = new Date(parisTimeStr);
+  // Get current time in Paris
+  const now = new Date();
+  // We use the Intl API to get the correct time in Paris handling DST automatically
+  const parisTimeStr = now.toLocaleString("en-US", {
+    timeZone: "Europe/Paris",
+  });
+  const parisDate = new Date(parisTimeStr);
 
-    // Create a target date for "Tomorrow 00:00:00" in Paris time
-    const nextMidnight = new Date(parisDate);
-    nextMidnight.setHours(24, 0, 0, 0);
+  // Create a target date for "Tomorrow 00:00:00" in Paris time
+  const nextMidnight = new Date(parisDate);
+  nextMidnight.setHours(24, 0, 0, 0);
 
-    const diffMs = nextMidnight - parisDate;
+  const diffMs = nextMidnight - parisDate;
 
-    // Convert to HH:MM
-    const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
+  // Convert to HH:MM
+  const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
 
-    const hStr = hours.toString().padStart(2, '0');
-    const mStr = minutes.toString().padStart(2, '0');
+  const hStr = hours.toString().padStart(2, "0");
+  const mStr = minutes.toString().padStart(2, "0");
 
-    timerEl.textContent = `${hStr}:${mStr}`;
+  timerEl.textContent = `${hStr}:${mStr}`;
 }
 
 // SIDEBAR TOGGLE
 function toggleSidebar() {
-    const sidebar = document.getElementById('info-sidebar');
-    sidebar.classList.toggle('open');
+  const sidebar = document.getElementById("info-sidebar");
+  sidebar.classList.toggle("open");
 }
 
 // Sidebar Section Toggle
 function toggleSidebarSection(id) {
-    const section = document.getElementById(id);
-    if (section) {
-        section.classList.toggle('collapsed');
-    }
+  const section = document.getElementById(id);
+  if (section) {
+    section.classList.toggle("collapsed");
+  }
 }
 
 // ==========================================
 // DUNGEON FORECAST SYSTEM (DB Version)
 // ==========================================
-let currentForecastDate = new Date(); 
-let forecastViewMode = 'tab'; // 'tab' or 'grid'
-let activeDungeonTab = 'classic'; // 'classic' or 'modular'
+let currentForecastDate = new Date();
+let forecastViewMode = "tab"; // 'tab' or 'grid'
+let activeDungeonTab = "classic"; // 'classic' or 'modular'
 
 async function initForecast() {
-    // Set current date based on Paris time
-    const parisString = new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" });
-    currentForecastDate = new Date(parisString);
+  // Set current date based on Paris time
+  const parisString = new Date().toLocaleString("en-US", {
+    timeZone: "Europe/Paris",
+  });
+  currentForecastDate = new Date(parisString);
 
-    renderForecastUI();
+  renderForecastUI();
 
-    // Bind Global Buttons (Previous/Next)
-    // We re-bind inside render usually, but static binds here are fine if elements exist
-    const btnPrev = document.getElementById('fc-prev');
-    const btnNext = document.getElementById('fc-next');
-    if(btnPrev) btnPrev.onclick = () => changeForecastDay(-1);
-    if(btnNext) btnNext.onclick = () => changeForecastDay(1);
+  // Bind Global Buttons (Previous/Next)
+  // We re-bind inside render usually, but static binds here are fine if elements exist
+  const btnPrev = document.getElementById("fc-prev");
+  const btnNext = document.getElementById("fc-next");
+  if (btnPrev) btnPrev.onclick = () => changeForecastDay(-1);
+  if (btnNext) btnNext.onclick = () => changeForecastDay(1);
 }
 
 // --- Navigation ---
 function changeForecastDay(days) {
-    currentForecastDate.setDate(currentForecastDate.getDate() + days);
-    renderForecastUI();
+  currentForecastDate.setDate(currentForecastDate.getDate() + days);
+  renderForecastUI();
 }
 
 function toggleForecastViewMode() {
-    forecastViewMode = (forecastViewMode === 'tab') ? 'grid' : 'tab';
-    renderForecastUI();
+  forecastViewMode = forecastViewMode === "tab" ? "grid" : "tab";
+  renderForecastUI();
 }
 
 function setDungeonTab(tab) {
-    activeDungeonTab = tab;
-    renderForecastUI();
+  activeDungeonTab = tab;
+  renderForecastUI();
 }
 
 // --- Helpers ---
 function getFormattedDate(dateObj) {
-    const d = String(dateObj.getDate()).padStart(2, '0');
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const y = dateObj.getFullYear();
-    return `${d}/${m}/${y}`;
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const y = dateObj.getFullYear();
+  return `${d}/${m}/${y}`;
 }
 
 // --- Main Render Function ---
 function renderForecastUI() {
-    const displayDate = getFormattedDate(currentForecastDate);
-    
-    // Check if it is today
-    const nowParis = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" }));
-    const isToday = (currentForecastDate.getDate() === nowParis.getDate() && 
-                     currentForecastDate.getMonth() === nowParis.getMonth() &&
-                     currentForecastDate.getFullYear() === nowParis.getFullYear());
-    
-    // 1. Update Header (Date + Toggle Button)
-    const navContainer = document.querySelector('.forecast-nav');
-    if(navContainer) {
-        // Clear existing to prevent duplicate buttons if re-rendering
-        navContainer.innerHTML = `
+  const displayDate = getFormattedDate(currentForecastDate);
+
+  // Check if it is today
+  const nowParis = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" })
+  );
+  const isToday =
+    currentForecastDate.getDate() === nowParis.getDate() &&
+    currentForecastDate.getMonth() === nowParis.getMonth() &&
+    currentForecastDate.getFullYear() === nowParis.getFullYear();
+
+  // 1. Update Header (Date + Toggle Button)
+  const navContainer = document.querySelector(".forecast-nav");
+  if (navContainer) {
+    // Clear existing to prevent duplicate buttons if re-rendering
+    navContainer.innerHTML = `
             <button id="fc-prev" style="background:#444; border:none; color:white; cursor:pointer; width:30px; height:30px; border-radius:4px;">&lt;</button>
             <span id="fc-date-display" style="font-weight: bold; color: var(--accent); flex-grow:1; text-align:center;">
                 ${isToday ? `TODAY (${displayDate})` : displayDate}
             </span>
             <button id="fc-next" style="background:#444; border:none; color:white; cursor:pointer; width:30px; height:30px; border-radius:4px;">&gt;</button>
             <button class="forecast-view-btn" onclick="toggleForecastViewMode()" title="Switch View">
-                ${forecastViewMode === 'tab' ? '⊞' : '☰'}
+                ${forecastViewMode === "tab" ? "⊞" : "☰"}
             </button>
         `;
-        // Re-bind nav buttons
-        document.getElementById('fc-prev').onclick = () => changeForecastDay(-1);
-        document.getElementById('fc-next').onclick = () => changeForecastDay(1);
-    }
+    // Re-bind nav buttons
+    document.getElementById("fc-prev").onclick = () => changeForecastDay(-1);
+    document.getElementById("fc-next").onclick = () => changeForecastDay(1);
+  }
 
-    const contentEl = document.getElementById('forecast-content');
-    
-    // 2. Fetch Data
-    const dungeons = typeof FORECAST_DB !== 'undefined' ? FORECAST_DB[displayDate] : null;
+  const contentEl = document.getElementById("forecast-content");
 
-    if (!dungeons || dungeons.length === 0) {
-        if(contentEl) contentEl.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No data for this date.</div>';
-        return;
-    }
+  // 2. Fetch Data
+  const dungeons =
+    typeof FORECAST_DB !== "undefined" ? FORECAST_DB[displayDate] : null;
 
-    // 3. Process Data
-    const classic = dungeons.filter(d => d.type.startsWith('DJ'));
-    const modular = dungeons.filter(d => d.type.startsWith('Modulox'));
+  if (!dungeons || dungeons.length === 0) {
+    if (contentEl)
+      contentEl.innerHTML =
+        '<div style="text-align:center; padding:20px; color:#666;">No data for this date.</div>';
+    return;
+  }
 
-    // Find Intersections
-    const classicNames = new Set(classic.map(d => d.name));
-    const modularNames = new Set(modular.map(d => d.name));
-    const intersectedNames = new Set([...classicNames].filter(x => modularNames.has(x)));
+  // 3. Process Data
+  const classic = dungeons.filter((d) => d.type.startsWith("DJ"));
+  const modular = dungeons.filter((d) => d.type.startsWith("Modulox"));
 
-    // 4. Render based on Mode
-    if (forecastViewMode === 'grid') {
-        renderGridView(contentEl, classic, modular, intersectedNames);
-    } else {
-        renderTabView(contentEl, classic, modular, intersectedNames);
-    }
+  // Find Intersections
+  const classicNames = new Set(classic.map((d) => d.name));
+  const modularNames = new Set(modular.map((d) => d.name));
+  const intersectedNames = new Set(
+    [...classicNames].filter((x) => modularNames.has(x))
+  );
+
+  // 4. Render based on Mode
+  if (forecastViewMode === "grid") {
+    renderGridView(contentEl, classic, modular, intersectedNames);
+  } else {
+    renderTabView(contentEl, classic, modular, intersectedNames);
+  }
 }
 
 // --- View: Grid (Side-by-Side) ---
 function renderGridView(container, classicList, modularList, intersections) {
-    let html = `<div class="forecast-grid">`;
-    html += renderGridColumn(classicList, "CLASSIC", "🎯", "type-classic", intersections);
-    html += renderGridColumn(modularList, "MODULAR", "⚔️", "type-modular", intersections);
-    html += `</div>`;
-    container.innerHTML = html;
+  let html = `<div class="forecast-grid">`;
+  html += renderGridColumn(
+    classicList,
+    "CLASSIC",
+    "🎯",
+    "type-classic",
+    intersections
+  );
+  html += renderGridColumn(
+    modularList,
+    "MODULAR",
+    "⚔️",
+    "type-modular",
+    intersections
+  );
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
 function renderGridColumn(list, title, emoji, typeClass, intersections) {
-    let colHtml = `<div class="forecast-col">
+  let colHtml = `<div class="forecast-col">
         <div class="forecast-subsection-header">
             <div class="header-left"><span>${emoji} ${title}</span></div>
         </div>
         <div class="forecast-subsection-content" style="display:block;">`;
 
-    if (list.length === 0) colHtml += `<div style="padding:10px; font-size:0.8em; color:#666;">None</div>`;
-    else {
-        list.forEach(d => {
-            const { badgeColor, typeLabel } = getDungeonStyles(d.type);
-            const isIntersected = intersections.has(d.name) ? 'is-intersected' : '';
-            
-            // Get Location
-            const location = (typeof DUNGEON_LOCATIONS !== 'undefined' && DUNGEON_LOCATIONS[d.name]) 
-                             ? DUNGEON_LOCATIONS[d.name] : "Location Unknown";
+  if (list.length === 0)
+    colHtml += `<div style="padding:10px; font-size:0.8em; color:#666;">None</div>`;
+  else {
+    list.forEach((d) => {
+      const { badgeColor, typeLabel } = getDungeonStyles(d.type);
+      const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-            colHtml += `
+      // Get Location
+      const location =
+        typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
+          ? DUNGEON_LOCATIONS[d.name]
+          : "Location Unknown";
+
+      colHtml += `
             <div class="compact-forecast-item ${typeClass} ${isIntersected}" title="${d.name}" data-tooltip="${location}">
                 <span class="compact-badge" style="background:${badgeColor};">${typeLabel}</span>
                 <span class="compact-name">${d.name}</span>
             </div>`;
-        });
-    }
-    colHtml += `</div></div>`;
-    return colHtml;
+    });
+  }
+  colHtml += `</div></div>`;
+  return colHtml;
 }
 
 function renderTabView(container, classicList, modularList, intersections) {
-    // 1. Render Tabs
-    let html = `
+  // 1. Render Tabs
+  let html = `
     <div class="forecast-tabs">
-        <div class="fc-tab ${activeDungeonTab === 'classic' ? 'active' : ''}" onclick="setDungeonTab('classic')">
+        <div class="fc-tab ${
+          activeDungeonTab === "classic" ? "active" : ""
+        }" onclick="setDungeonTab('classic')">
             🎯 Guild Hunters
         </div>
-        <div class="fc-tab ${activeDungeonTab === 'modular' ? 'active' : ''}" onclick="setDungeonTab('modular')">
+        <div class="fc-tab ${
+          activeDungeonTab === "modular" ? "active" : ""
+        }" onclick="setDungeonTab('modular')">
             ⚔️ Modulux
         </div>
     </div>
     <div class="forecast-list-container">`;
 
-    // 2. Determine which list to show
-    const targetList = activeDungeonTab === 'classic' ? classicList : modularList;
-    const typeClass = activeDungeonTab === 'classic' ? 'type-classic' : 'type-modular';
+  // 2. Determine which list to show
+  const targetList = activeDungeonTab === "classic" ? classicList : modularList;
+  const typeClass =
+    activeDungeonTab === "classic" ? "type-classic" : "type-modular";
 
-    if (targetList.length === 0) {
-        html += `<div style="padding:20px; text-align:center; color:#666;">No dungeons found.</div>`;
-    } else {
-        targetList.forEach(d => {
-            const { badgeColor, typeLabel } = getDungeonStyles(d.type);
-            const isIntersected = intersections.has(d.name) ? 'is-intersected' : '';
-            
-            // Get Location
-            const location = (typeof DUNGEON_LOCATIONS !== 'undefined' && DUNGEON_LOCATIONS[d.name]) 
-                             ? DUNGEON_LOCATIONS[d.name] : "Location Unknown";
+  if (targetList.length === 0) {
+    html += `<div style="padding:20px; text-align:center; color:#666;">No dungeons found.</div>`;
+  } else {
+    targetList.forEach((d) => {
+      const { badgeColor, typeLabel } = getDungeonStyles(d.type);
+      const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-            html += `
+      // Get Location
+      const location =
+        typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
+          ? DUNGEON_LOCATIONS[d.name]
+          : "Location Unknown";
+
+      html += `
             <div class="full-forecast-item ${typeClass} ${isIntersected}" data-tooltip="${location}">
                 <span class="badge" style="background:${badgeColor};">${typeLabel}</span>
                 <span class="name">${d.name}</span>
             </div>`;
-        });
-    }
+    });
+  }
 
-    html += `</div>`;
-    container.innerHTML = html;
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
 // --- Shared Helper for Colors/Labels ---
 function getDungeonStyles(rawType) {
-    let badgeColor = '#27ae60'; // Default Green
-    
-    if (rawType.includes('231')) badgeColor = '#e67e22';      // Orange
-    else if (rawType.includes('216')) badgeColor = '#9b59b6'; // Purple
-    else if (rawType.includes('201') || rawType.includes('186')) badgeColor = '#3498db'; // Blue
-    
-    let rawRange = rawType.replace(/^(DJ|Modulox)\s*/i, '').trim();
-    
-    return {
-        badgeColor: badgeColor,
-        typeLabel: `Lvl. ${rawRange}`
-    };
+  let badgeColor = "#27ae60"; // Default Green
+
+  if (rawType.includes("231")) badgeColor = "#e67e22"; // Orange
+  else if (rawType.includes("216")) badgeColor = "#9b59b6"; // Purple
+  else if (rawType.includes("201") || rawType.includes("186"))
+    badgeColor = "#3498db"; // Blue
+
+  let rawRange = rawType.replace(/^(DJ|Modulox)\s*/i, "").trim();
+
+  return {
+    badgeColor: badgeColor,
+    typeLabel: `Lvl. ${rawRange}`,
+  };
 }
 
 // ==========================================
 // PICTURE IN PICTURE LOGIC
 // ==========================================
 async function togglePiP(elementId, title) {
-    const playerElement = document.getElementById(elementId);
+  const playerElement = document.getElementById(elementId);
 
-    // If PiP is already open, close it
-    if (pipWindow) {
-        pipWindow.close();
-        pipWindow = null;
-        return;
-    }
+  // If PiP is already open, close it
+  if (pipWindow) {
+    pipWindow.close();
+    pipWindow = null;
+    return;
+  }
 
-    // Check for browser support
-    if (!('documentPictureInPicture' in window)) {
-        alert("Your browser does not support Document Picture-in-Picture. Please use the latest version of Chrome, Edge, or Opera.");
-        return;
-    }
+  // Check for browser support
+  if (!("documentPictureInPicture" in window)) {
+    alert(
+      "Your browser does not support Document Picture-in-Picture. Please use the latest version of Chrome, Edge, or Opera."
+    );
+    return;
+  }
 
-    try {
-        pipWindow = await window.documentPictureInPicture.requestWindow({
-            width: elementId === 'chat-list' ? 400 : 450,
-            height: 500,
-        });
+  try {
+    pipWindow = await window.documentPictureInPicture.requestWindow({
+      width: elementId === "chat-list" ? 400 : 450,
+      height: 500,
+    });
 
-        // Copy Global Functions to PiP Window so buttons work
-        pipWindow.switchMeterMode = window.switchMeterMode;
-        pipWindow.toggleIconVariant = window.toggleIconVariant;
-        pipWindow.modifyExpansion = window.modifyExpansion;
-        pipWindow.showTooltip = window.showTooltip;
-        pipWindow.updateTooltipPosition = window.updateTooltipPosition;
-        pipWindow.hideTooltip = window.hideTooltip;
+    // Copy Global Functions to PiP Window so buttons work
+    pipWindow.switchMeterMode = window.switchMeterMode;
+    pipWindow.toggleIconVariant = window.toggleIconVariant;
+    pipWindow.modifyExpansion = window.modifyExpansion;
+    pipWindow.showTooltip = window.showTooltip;
+    pipWindow.updateTooltipPosition = window.updateTooltipPosition;
+    pipWindow.hideTooltip = window.hideTooltip;
 
-        // Copy Styles from the main document to the PiP document
-        [...document.styleSheets].forEach((styleSheet) => {
-            try {
-                if (styleSheet.cssRules) {
-                    const newStyle = pipWindow.document.createElement('style');
-                    [...styleSheet.cssRules].forEach((rule) => {
-                        newStyle.appendChild(pipWindow.document.createTextNode(rule.cssText));
-                    });
-                    pipWindow.document.head.appendChild(newStyle);
-                } else if (styleSheet.href) {
-                    const newLink = pipWindow.document.createElement('link');
-                    newLink.rel = 'stylesheet';
-                    newLink.href = styleSheet.href;
-                    pipWindow.document.head.appendChild(newLink);
-                }
-            } catch (e) {
-                const link = pipWindow.document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = styleSheet.href;
-                pipWindow.document.head.appendChild(link);
-            }
-        });
+    // Copy Styles from the main document to the PiP document
+    [...document.styleSheets].forEach((styleSheet) => {
+      try {
+        if (styleSheet.cssRules) {
+          const newStyle = pipWindow.document.createElement("style");
+          [...styleSheet.cssRules].forEach((rule) => {
+            newStyle.appendChild(
+              pipWindow.document.createTextNode(rule.cssText)
+            );
+          });
+          pipWindow.document.head.appendChild(newStyle);
+        } else if (styleSheet.href) {
+          const newLink = pipWindow.document.createElement("link");
+          newLink.rel = "stylesheet";
+          newLink.href = styleSheet.href;
+          pipWindow.document.head.appendChild(newLink);
+        }
+      } catch (e) {
+        const link = pipWindow.document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = styleSheet.href;
+        pipWindow.document.head.appendChild(link);
+      }
+    });
 
-        // Set PiP Body Styles
-        pipWindow.document.body.style.background = "#121212";
-        pipWindow.document.body.style.display = "flex";
-        pipWindow.document.body.style.flexDirection = "column";
-        pipWindow.document.body.style.margin = "0";
-        pipWindow.document.body.className = "pip-window";
+    // Set PiP Body Styles
+    pipWindow.document.body.style.background = "#121212";
+    pipWindow.document.body.style.display = "flex";
+    pipWindow.document.body.style.flexDirection = "column";
+    pipWindow.document.body.style.margin = "0";
+    pipWindow.document.body.className = "pip-window";
 
-        // INJECT HEADER IF COMBAT METER
-        if (elementId === 'meter-split-container') {
-            const header = pipWindow.document.createElement('div');
-            header.className = 'pip-header';
-            header.innerHTML = `
-                <div id="pip-tab-damage" class="pip-tab ${activeMeterMode === 'damage' ? 'active-dmg' : ''}" onclick="switchMeterMode('damage')">
+    // INJECT HEADER IF COMBAT METER
+    if (elementId === "meter-split-container") {
+      const header = pipWindow.document.createElement("div");
+      header.className = "pip-header";
+      header.innerHTML = `
+                <div id="pip-tab-damage" class="pip-tab ${
+                  activeMeterMode === "damage" ? "active-dmg" : ""
+                }" onclick="switchMeterMode('damage')">
                     <img src="./img/headers/damage.png" class="tab-icon">
                     <span>DMG</span>
                 </div>
-                <div id="pip-tab-healing" class="pip-tab ${activeMeterMode === 'healing' ? 'active-heal' : ''}" onclick="switchMeterMode('healing')">
+                <div id="pip-tab-healing" class="pip-tab ${
+                  activeMeterMode === "healing" ? "active-heal" : ""
+                }" onclick="switchMeterMode('healing')">
                     <img src="./img/headers/healing.png" class="tab-icon">
                     <span>HEALING</span>
                 </div>
-                <div id="pip-tab-armor" class="pip-tab ${activeMeterMode === 'armor' ? 'active-armor' : ''}" onclick="switchMeterMode('armor')">
+                <div id="pip-tab-armor" class="pip-tab ${
+                  activeMeterMode === "armor" ? "active-armor" : ""
+                }" onclick="switchMeterMode('armor')">
                     <img src="./img/headers/armor.png" class="tab-icon">
                     <span>ARMOR</span>
                 </div>
             `;
-            pipWindow.document.body.appendChild(header);
-        }
-
-        // Move the element into the PiP window
-        const parent = playerElement.parentElement;
-        const placeholder = document.createElement('div');
-        placeholder.id = elementId + "-placeholder";
-        placeholder.className = "empty-state";
-        placeholder.textContent = "Viewing in Picture-in-Picture mode...";
-        
-        const originalParent = parent;
-        parent.replaceChild(placeholder, playerElement);
-        playerElement.classList.add('pip-active');
-        pipWindow.document.body.appendChild(playerElement);
-
-        // Handle closing
-        pipWindow.addEventListener("pagehide", () => {
-            pipWindow = null;
-            playerElement.classList.remove('pip-active');
-            const currentPlaceholder = document.getElementById(elementId + "-placeholder");
-            if (currentPlaceholder) {
-                originalParent.replaceChild(playerElement, currentPlaceholder);
-            }
-            renderMeter();
-            renderTracker();
-            if (elementId === 'chat-list') chatList.scrollTop = chatList.scrollHeight;
-        });
-
-        // Force renders
-        renderMeter();
-        renderTracker();
-
-    } catch (err) {
-        console.error("Failed to open PiP window:", err);
+      pipWindow.document.body.appendChild(header);
     }
+
+    // Move the element into the PiP window
+    const parent = playerElement.parentElement;
+    const placeholder = document.createElement("div");
+    placeholder.id = elementId + "-placeholder";
+    placeholder.className = "empty-state";
+    placeholder.textContent = "Viewing in Picture-in-Picture mode...";
+
+    const originalParent = parent;
+    parent.replaceChild(placeholder, playerElement);
+    playerElement.classList.add("pip-active");
+    pipWindow.document.body.appendChild(playerElement);
+
+    // Handle closing
+    pipWindow.addEventListener("pagehide", () => {
+      pipWindow = null;
+      playerElement.classList.remove("pip-active");
+      const currentPlaceholder = document.getElementById(
+        elementId + "-placeholder"
+      );
+      if (currentPlaceholder) {
+        originalParent.replaceChild(playerElement, currentPlaceholder);
+      }
+      renderMeter();
+      renderTracker();
+      if (elementId === "chat-list") chatList.scrollTop = chatList.scrollHeight;
+    });
+
+    // Force renders
+    renderMeter();
+    renderTracker();
+  } catch (err) {
+    console.error("Failed to open PiP window:", err);
+  }
 }
 
 function openTrackerModal(itemId) {
-    const item = trackedItems.find(t => t.id === itemId);
-    if (!item) return;
+  const item = trackedItems.find((t) => t.id === itemId);
+  if (!item) return;
 
-    const modal = document.getElementById('tracker-modal');
-    const safeName = item.name.replace(/\s+/g, '_');
-    
-    document.getElementById('modal-item-name').textContent = item.name;
-    document.getElementById('modal-item-icon').src = `img/resources/${safeName}.png`;
-    document.getElementById('modal-input-current').value = item.current;
-    document.getElementById('modal-input-target').value = item.target;
+  const modal = document.getElementById("tracker-modal");
+  const safeName = item.name.replace(/\s+/g, "_");
 
-    // Set up save button
-    document.getElementById('modal-save-btn').onclick = () => {
-        const newCur = parseInt(document.getElementById('modal-input-current').value) || 0;
-        const newTar = parseInt(document.getElementById('modal-input-target').value) || 0;
-        updateItemValue(item.id, 'current', newCur);
-        updateItemValue(item.id, 'target', newTar);
-        closeTrackerModal();
-    };
+  document.getElementById("modal-item-name").textContent = item.name;
+  document.getElementById(
+    "modal-item-icon"
+  ).src = `img/resources/${safeName}.png`;
+  document.getElementById("modal-input-current").value = item.current;
+  document.getElementById("modal-input-target").value = item.target;
 
-    // Set up delete button
-    document.getElementById('modal-delete-btn').onclick = () => {
-        if(confirm(`Stop tracking ${item.name}?`)) {
-            removeTrackedItem(item.id);
-            closeTrackerModal();
-        }
-    };
+  // Set up save button
+  document.getElementById("modal-save-btn").onclick = () => {
+    const newCur =
+      parseInt(document.getElementById("modal-input-current").value) || 0;
+    const newTar =
+      parseInt(document.getElementById("modal-input-target").value) || 0;
+    updateItemValue(item.id, "current", newCur);
+    updateItemValue(item.id, "target", newTar);
+    closeTrackerModal();
+  };
 
-    modal.style.display = 'flex';
+  // Set up delete button
+  document.getElementById("modal-delete-btn").onclick = () => {
+    if (confirm(`Stop tracking ${item.name}?`)) {
+      removeTrackedItem(item.id);
+      closeTrackerModal();
+    }
+  };
+
+  modal.style.display = "flex";
 }
 
 function closeTrackerModal() {
-    document.getElementById('tracker-modal').style.display = 'none';
+  document.getElementById("tracker-modal").style.display = "none";
 }
 
 // INITIALIZATION
 // Update timer every minute
-setInterval(updateDailyTimer, 60000); 
+setInterval(updateDailyTimer, 60000);
 updateDailyTimer();
