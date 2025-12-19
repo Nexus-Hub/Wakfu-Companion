@@ -1,16 +1,16 @@
 # Nexus Wakfu Companion
+Live Tool: [https://wakfu-companion-production.up.railway.app/](https://wakfu-companion-production.up.railway.app/)
 
-https://wakfu-companion-production.up.railway.app/
-
-**Nexus Wakfu Companion** is a lightweight, browser-based overlay tool for *Wakfu*. It parses the game's `wakfu-chat.log` file in real-time to provide combat statistics, item tracking, chat translation, and utility information without requiring external software installation.
+**Nexus Wakfu Companion** is a lightweight, browser-based tool for *Wakfu* with PiP available to act as a Overlay. It parses the game's `wakfu-chat.log` file in real-time to provide combat statistics, item tracking, chat translation, and utility information without requiring external software installation.
 
 ## Key Features
 
 ### ⚔️ Combat Meter
-A fully responsive damage, healing, and armor meter that updates instantly as combat occurs.
+A fully responsive damage, healing, and armor meter that updates instantly.
+*   **Multi-Language Support:** Automatically parses logs in English, French, Spanish, and Portuguese.
 *   **Three Modes:** Toggle between **Damage**, **Healing**, and **Armor** statistics.
-*   **Ally/Enemy Split:** Automatically categorizes entities into Allies and Enemies based on player classes, summons, and known mob families.
-*   **Detailed Breakdown:** Click on any entity to view specific spell usage, elemental types, and damage/healing contributions.
+*   **Detailed Breakdown:** Click on any entity to view specific spell usage and elemental contributions.
+*   **Accurate Attribution:** Correctly handles indirect damage sources like Rogue Bombs.
 *   **Class Detection:** Automatically identifies player classes based on the spells they cast.
 *   **Auto-Reset:** Configurable "Watchdog" timer to automatically reset data after a combat encounter ends.
 

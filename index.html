@@ -61,6 +61,8 @@
                         <img src="./img/headers/armor.png" class="tab-icon" onerror="this.style.display='none'">
                         ARMOR
                     </div>
+                    <!-- PiP Button -->
+    <button class="pip-btn" onclick="togglePiP('meter-split-container', 'Combat Meter')" title="Picture in Picture">⧉</button>
                 </div>
                 
                 <!-- Controls Area -->
@@ -127,6 +129,8 @@
                 <div class="panel-header">
                     <img src="./img/headers/item_tracker.png" class="header-label-icon" onerror="this.style.display='none'">
                     <span class="header-label">Item Tracker</span>
+                    <!-- PiP Button -->
+                    <button class="pip-btn" onclick="togglePiP('tracker-list', 'Item Tracker')" title="Picture in Picture">⧉</button>
                 </div>
                 <div class="tracker-controls">
                     <select id="prof-select" class="tracker-select" onchange="updateItemDropdown()">
@@ -152,6 +156,8 @@
                     <img src="./img/headers/chat.png" class="header-label-icon" onerror="this.style.display='none'">
                     <span class="header-label">Chat & Translator</span>
                     <button id="clearChatBtn" style="padding:4px 8px; font-size:0.7em; background:#444; color:#fff; border:none; cursor:pointer; margin-left: auto;">Clear</button>
+                    <!-- PiP Button -->
+                    <button class="pip-btn" onclick="togglePiP('chat-list', 'Chat')" title="Picture in Picture">⧉</button>
                 </div>
                 
                 <div class="trans-toolbar">
@@ -183,6 +189,7 @@
 
     <!-- SIDEBAR FOR MISSIONS & RELICS -->
     <div id="info-sidebar" class="sidebar">
+        
         <div class="sidebar-header">
             <h3>Quick Info</h3>
             <button class="close-sidebar-btn" onclick="toggleSidebar()">×</button>
@@ -317,19 +324,19 @@
                 </div>
             </div>
 
+            <!-- NEW SIDEBAR FOOTER FOR BMC -->
+            <div class="sidebar-footer">
+                <a href="https://www.buymeacoffee.com/nexuswow" target="_blank">
+                 <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" class="bmc-sidebar-img">
+                </a>
+            </div>
+
         </div>
 
 
     <!-- Footer for File Tracking Info -->
     <div id="app-footer">
         <div class="file-info">
-            <!-- Buy Me a Coffee -->
-            <a href="https://www.buymeacoffee.com/nexuswow" target="_blank" class="bmc-btn-inline">
-                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee">
-            </a>
-
-            <!-- Separator -->
-            <span class="footer-separator">|</span>
             <!-- LIVE Indicator -->
             <span id="live-indicator" style="margin-right: 2px; font-size:0.8em; color:#0f0; display:none;">●</span>
 
@@ -358,6 +365,19 @@
     <script src="database.js"></script>
     <script src="forecast_data.js"></script>
     <script src="script.js"></script>
+
+    <!-- BUY ME A COFFEE WIDGET -->
+    <script data-name="BMC-Widget" 
+    data-cfasync="false" 
+    src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" 
+    data-id="nexuswow" 
+    data-description="Support me on Buy me a coffee!" 
+    data-message="If you'd like to support my time spent, you can contribute here!" 
+    data-color="#5F7FFF" 
+    data-position="Right" 
+    data-x_margin="10" 
+    data-y_margin="10">
+    </script>
     
 </body>
 </html>

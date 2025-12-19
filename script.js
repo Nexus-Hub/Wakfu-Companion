@@ -3,6 +3,7 @@
 // ==========================================
 let fileHandle, fileOffset = 0, isReading = false;
 let parseIntervalId = null, watchdogIntervalId = null;
+let pipWindow = null;
 
 // Global function to handle the toggle and save state
 window.toggleIconVariant = function(playerName, imgEl) {
@@ -20,6 +21,15 @@ window.toggleIconVariant = function(playerName, imgEl) {
     // 4. Clear Cache (So the next re-render generates the correct version)
     delete playerIconCache[playerName];
 };
+
+// Helper to find elements in either the main document or the PiP document
+function getUI(id) {
+    if (pipWindow && pipWindow.document) {
+        const pipEl = pipWindow.document.getElementById(id);
+        if (pipEl) return pipEl;
+    }
+    return document.getElementById(id);
+}
 
 // Combat State
 let fightData = {}; // Damage
@@ -433,6 +443,10 @@ function updateItemValue(id, key, val) {
 }
 
 function renderTracker() {
+    const listEl = getUI('tracker-list');
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    
     trackerList.innerHTML = "";
     if (trackedItems.length === 0) {
         trackerList.innerHTML = '<div class="empty-state">Add items to track</div>';
@@ -653,7 +667,16 @@ function processLine(line) {
     if (!line) return;
     if (line.includes("You have picked up")) processItemLog(line);
     if (line.includes("[Game Log]")) return;
-    if (line.includes("[Fight Log]")) { processFightLog(line); return; }
+    
+    // MULTI-LANGUAGE COMBAT HEADERS
+    if (line.includes("[Fight Log]") || 
+        line.includes("[Information (combat)]") || 
+        line.includes("[Información (combate)]") || 
+        line.includes("[Registro de Lutas]")) { 
+        processFightLog(line); 
+        return; 
+    }
+    
     if (line.match(/^\d{2}:\d{2}:\d{2}/)) processChatLog(line);
 }
 
@@ -662,9 +685,24 @@ function processLine(line) {
 // ==========================================
 function switchMeterMode(mode) {
     activeMeterMode = mode;
+
+    // Update Main Window
     document.getElementById('tab-damage').classList.toggle('active', mode === 'damage');
     document.getElementById('tab-healing').classList.toggle('active', mode === 'healing');
     document.getElementById('tab-armor').classList.toggle('active', mode === 'armor');
+
+    /// Update PiP Window
+    if (pipWindow && pipWindow.document) {
+        const pDmg = pipWindow.document.getElementById('pip-tab-damage');
+        const pHeal = pipWindow.document.getElementById('pip-tab-healing');
+        const pArm = pipWindow.document.getElementById('pip-tab-armor');
+
+        if (pDmg && pHeal && pArm) {
+            pDmg.className = 'pip-tab' + (mode === 'damage' ? ' active-dmg' : '');
+            pHeal.className = 'pip-tab' + (mode === 'healing' ? ' active-heal' : '');
+            pArm.className = 'pip-tab' + (mode === 'armor' ? ' active-armor' : '');
+        }
+    }
     renderMeter();
 }
 
@@ -687,10 +725,34 @@ function detectClass(playerName, spellName) {
     }
 }
 
+// Helper at the top of your script or inside processFightLog
+const elementMap = {
+    "aire": "Air", "ar": "Air",
+    "fuego": "Fire", "fogo": "Fire", "feu": "Fire",
+    "tierra": "Earth", "terra": "Earth", "terre": "Earth",
+    "agua": "Water", "água": "Water", "eau": "Water",
+    "estasis": "Stasis", "stase": "Stasis",
+    "luz": "Light", "lumière": "Light"
+};
+
+function normalizeElement(el) {
+    if (!el) return null;
+    const low = el.toLowerCase();
+    return elementMap[low] || (low.charAt(0).toUpperCase() + low.slice(1));
+}
+
 function processFightLog(line) {
-    const content = line.split("[Fight Log] ")[1].trim();
-    const castMatch = content.match(/^(.*?) casts (.*?)(?:\.|\s\(|$)/);
+    const hpUnits = "HP|PdV|PV";
+    const armorUnits = "Armor|Armadura|Armure";
+    const numPattern = "[\\d,.\\s]+"; // Added dot (.) to support 7.005
+
+    const parts = line.split(/\[(?:Fight Log|Information \(combat\)|Información \(combate\)|Registro de Lutas)\] /);
+    if (parts.length < 2) return;
+    const content = parts[1].trim();
     
+    // 1. CAST DETECTION
+    // Handles: casts, lance (le sort), lanza (el hechizo), lança (o feitiço)
+    const castMatch = content.match(/^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/);
     if (castMatch) {
         currentCaster = castMatch[1].trim();
         currentSpell = castMatch[2].trim();
@@ -698,9 +760,24 @@ function processFightLog(line) {
         return;
     }
 
-    // ARMOR PARSING
-    // Pattern: Player: X Armor (Source)
-    const armorMatch = content.match(/^(.*?): ([\d,\s]+) Armor(?: \((.*?)\))?/);
+    // 2. DAMAGE PARSING (With dot support and Element Normalization)
+    const dmgMatch = content.match(new RegExp(`^(.*?): -(${numPattern}) (?:${hpUnits}).*? \\((.*?)\\)(?: \\((.*?)\\))?`));
+    if (dmgMatch) {
+        let amount = parseInt(dmgMatch[2].replace(/[,.\s]/g, ''), 10);
+        let element = normalizeElement(dmgMatch[3]);
+        let spellOverride = dmgMatch[4]; 
+        
+        if (!isNaN(amount)) {
+            const finalSpell = spellOverride || currentSpell;
+            updateCombatData(fightData, currentCaster, finalSpell, amount, element);
+            lastCombatTime = Date.now();
+            updateWatchdogUI();
+        }
+        return;
+    }
+
+    // 3. ARMOR PARSING
+    const armorMatch = content.match(new RegExp(`^(.*?): (${numPattern}) (?:${armorUnits})(?: \\((.*?)\\))?`));
     if (armorMatch) {
         let player = armorMatch[1];
         let amount = parseInt(armorMatch[2].replace(/[,.\s]/g, ''), 10);
@@ -714,49 +791,30 @@ function processFightLog(line) {
         return;
     }
 
-    // HEALING
-    if (content.includes("+") && content.includes("HP")) {
-        const healMatch = content.match(/^(.*?): \+([\d,\s]+) HP(.*)$/);
-        if (healMatch) {
-            let player = healMatch[1];
-            let amount = parseInt(healMatch[2].replace(/[,.\s]/g, ''), 10);
-            let remainder = healMatch[3].trim(); // e.g. "(Neutral) (Critical Hit Expert)" or "(Fire)"
-            
-            if (!isNaN(amount) && amount > 0) {
-                let element = null;
-                let actualSpell = currentSpell; // Default to last cast spell
-
-                // Parse Element and Optional Source from remainder
-                // Expected formats: "(Fire)" or "(Neutral) (Critical Hit Expert)"
-                const detailsMatch = remainder.match(/^\((.+?)\)(?: \((.+?)\))?$/);
-                if (detailsMatch) {
-                    element = detailsMatch[1]; // e.g. "Neutral"
-                    if (detailsMatch[2]) {
-                        actualSpell = detailsMatch[2]; // e.g. "Critical Hit Expert" overrides cast spell
-                    }
-                }
-
-                updateCombatData(healData, currentCaster, actualSpell, amount, element);
-                lastCombatTime = Date.now();
-                updateWatchdogUI();
+    // 4. HEALING PARSING
+    const healMatch = content.match(new RegExp(`^(.*?): \\+(${numPattern}) (?:${hpUnits})(.*)$`));
+    if (healMatch) {
+        let player = healMatch[1];
+        let amount = parseInt(healMatch[2].replace(/[,.\s]/g, ''), 10);
+        let remainder = healMatch[3].trim();
+        
+        if (!isNaN(amount) && amount > 0) {
+            let element = null;
+            let actualSpell = currentSpell;
+            const detailsMatch = remainder.match(/^\((.+?)\)(?: \((.+?)\))?$/);
+            if (detailsMatch) {
+                element = normalizeElement(detailsMatch[1]);
+                if (detailsMatch[2]) actualSpell = detailsMatch[2];
             }
-            return; 
-        }
-    }
-
-    // DAMAGE
-    const dmgMatch = content.match(/^(.*?): -([\d,\s]+) HP.*?\((.*?)\)/);
-    if (dmgMatch) {
-        let amount = parseInt(dmgMatch[2].replace(/[,.\s]/g, ''), 10);
-        let element = dmgMatch[3]; 
-        if (!isNaN(amount)) {
-            updateCombatData(fightData, currentCaster, currentSpell, amount, element);
+            updateCombatData(healData, currentCaster, actualSpell, amount, element);
             lastCombatTime = Date.now();
             updateWatchdogUI();
         }
-        return;
-    } 
-    const simpleDmgMatch = content.match(/^(.*?): -([\d,\s]+) HP/);
+        return; 
+    }
+
+    // 5. SIMPLE DAMAGE FALLBACK
+    const simpleDmgMatch = content.match(new RegExp(`^(.*?): -(${numPattern}) (?:${hpUnits})`));
     if (simpleDmgMatch) {
         let amount = parseInt(simpleDmgMatch[2].replace(/[,.\s]/g, ''), 10);
         if (!isNaN(amount)) {
@@ -868,10 +926,13 @@ function renderMeter() {
 
     const players = Object.values(dataSet);
     
-    const alliesContainer = document.getElementById('list-allies');
-    const enemiesContainer = document.getElementById('list-enemies');
-    const alliesTotalEl = document.getElementById('allies-total-val');
-    const enemiesTotalEl = document.getElementById('enemies-total-val');
+    // Use getUI instead of document.getElementById
+    const alliesContainer = getUI('list-allies');
+    const enemiesContainer = getUI('list-enemies');
+    const alliesTotalEl = getUI('allies-total-val');
+    const enemiesTotalEl = getUI('enemies-total-val');
+
+    if (!alliesContainer || !enemiesContainer) return; // Guard for PiP transition
 
     if (players.length === 0) {
         alliesContainer.innerHTML = `<div class="empty-state">Waiting for combat...</div>`;
@@ -1109,35 +1170,74 @@ function setChatFilter(filter) {
     chatList.scrollTop = chatList.scrollHeight;
 }
 
+// CHAT CHANNEL CATEGORIES
 function getCategoryFromChannel(channelName) {
     const lower = channelName.toLowerCase();
-    if (lower.includes('vicinity')) return 'vicinity';
-    if (lower.includes('private') || lower.includes('whisper')) return 'private';
-    if (lower.includes('group')) return 'group';
-    if (lower.includes('guild')) return 'guild';
-    if (lower.includes('trade')) return 'trade';
-    if (lower.includes('community')) return 'community';
-    if (lower.includes('recruitment')) return 'recruitment';
+    
+    // Vicinity: Vicinity, Proximité, Local, Vizinhança
+    if (lower.includes('vicinity') || lower.includes('proximit') || lower.includes('local') || lower.includes('vizinhança')) return 'vicinity';
+    
+    // Private: Private, Whisper, Privé, Privado
+    if (lower.includes('private') || lower.includes('whisper') || lower.includes('priv')) return 'private';
+    
+    // Group: Group, Groupe, Grupo
+    if (lower.includes('group') || lower.includes('groupe') || lower.includes('grupo')) return 'group';
+    
+    // Guild: Guild, Guilde, Gremio, Guilda
+    if (lower.includes('guild') || lower.includes('guilde') || lower.includes('gremio')) return 'guild';
+    
+    // Trade: Trade, Commerce, Comercio, Comércio
+    if (lower.includes('trade') || lower.includes('commerce') || lower.includes('comercio')) return 'trade';
+    
+    // Community: Community, Communauté, Comunidad, Comunidade
+    if (lower.includes('community') || lower.includes('communaut') || lower.includes('comunidad') || lower.includes('comunidade')) return 'community';
+    
+    // Recruitment: Recruitment, Recrutement, Reclutamiento, Recrutamento
+    if (lower.includes('recruitment') || lower.includes('recrutement') || lower.includes('reclutamiento') || lower.includes('recrutamento')) return 'recruitment';
+    
+    // Politics: Politics, Politique, Política
+    if (lower.includes('politic')) return 'politics';
+
+    // PvP: PvP, JcJ, Camp
+    if (lower.includes('pvp') || lower.includes('jcj') || lower.includes('camp')) return 'pvp';
+
     return 'other'; 
+}
+
+function getChannelColor(category) {
+    const map = {
+        'vicinity': CHAT_COLORS.Vicinity,
+        'private': CHAT_COLORS.Private,
+        'group': CHAT_COLORS.Group,
+        'guild': CHAT_COLORS.Guild,
+        'trade': CHAT_COLORS.Trade,
+        'politics': CHAT_COLORS.Politics,
+        'pvp': CHAT_COLORS.PvP,
+        'community': CHAT_COLORS.Community,
+        'recruitment': CHAT_COLORS.Recruitment
+    };
+    return map[category] || CHAT_COLORS.Default;
 }
 
 function addChatMessage(time, channel, author, message) {
     const emptyState = chatList.querySelector('.empty-state');
-    if (emptyState) {
-        chatList.innerHTML = '';
-    }
+    if (emptyState) chatList.innerHTML = '';
 
     const div = document.createElement('div');
     div.className = 'chat-msg';
+    
+    // 1. Get Category (Multi-language logic)
     const category = getCategoryFromChannel(channel);
     div.setAttribute('data-category', category); 
 
+    // 2. Get Color based on that Category
+    const color = getChannelColor(category);
+    
     if (currentChatFilter !== 'all' && category !== 'vicinity' && category !== 'private' && category !== currentChatFilter) {
         div.style.display = 'none';
     }
 
     const transId = 'trans-' + Date.now() + '-' + Math.floor(Math.random()*1000);
-    const color = getChannelColor(channel);
     const channelTag = `[${channel}]`;
 
     div.innerHTML = `
@@ -1154,6 +1254,7 @@ function addChatMessage(time, channel, author, message) {
     chatList.appendChild(div);
     chatList.scrollTop = chatList.scrollHeight;
 
+    // Translation logic
     if (transConfig.enabled) {
         if (channel.includes("(PT)") && !transConfig.pt) return;
         if (channel.includes("(FR)") && !transConfig.fr) return;
@@ -1518,6 +1619,132 @@ function getDungeonStyles(rawType) {
         badgeColor: badgeColor,
         typeLabel: `Lvl. ${rawRange}`
     };
+}
+
+async function togglePiP(elementId, title) {
+    const playerElement = document.getElementById(elementId);
+    if (pipWindow) { pipWindow.close(); return; }
+
+    try {
+        pipWindow = await window.documentPictureInPicture.requestWindow({
+            width: elementId === 'chat-list' ? 400 : 450,
+            height: 500,
+        });
+
+        // Copy functions so PiP can call them
+        pipWindow.switchMeterMode = window.switchMeterMode;
+        pipWindow.toggleIconVariant = window.toggleIconVariant;
+
+        // 2. Copy Styles from the main document to the PiP document
+        [...document.styleSheets].forEach((styleSheet) => {
+            try {
+                if (styleSheet.cssRules) {
+                    const newStyle = pipWindow.document.createElement('style');
+                    [...styleSheet.cssRules].forEach((rule) => {
+                        newStyle.appendChild(pipWindow.document.createTextNode(rule.cssText));
+                    });
+                    pipWindow.document.head.appendChild(newStyle);
+                } else if (styleSheet.href) {
+                    const newLink = pipWindow.document.createElement('link');
+                    newLink.rel = 'stylesheet';
+                    newLink.href = styleSheet.href;
+                    pipWindow.document.head.appendChild(newLink);
+                }
+            } catch (e) {
+                // Handle cross-origin stylesheets
+                const link = pipWindow.document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = styleSheet.href;
+                pipWindow.document.head.appendChild(link);
+            }
+        });
+
+        // 3. Prepare the element and its placeholder
+        const parent = playerElement.parentElement;
+        const placeholder = document.createElement('div');
+        placeholder.id = elementId + "-placeholder";
+        placeholder.className = "empty-state";
+        placeholder.textContent = "Viewing in Picture-in-Picture mode...";
+        
+        // Save references for returning the element
+        const originalParent = parent;
+        const nextSibling = playerElement.nextSibling;
+
+        // Add some basic PiP styles to the new document body
+        pipWindow.document.body.style.background = "#121212";
+        pipWindow.document.body.style.display = "flex";
+        pipWindow.document.body.style.flexDirection = "column";
+        pipWindow.document.body.style.margin = "0";
+        pipWindow.document.body.style.padding = "0";
+        pipWindow.document.body.className = "pip-window";
+
+        if (elementId === 'meter-split-container') {
+    const header = pipWindow.document.createElement('div');
+    header.className = 'pip-header';
+    header.innerHTML = `
+        <div id="pip-tab-damage" class="pip-tab ${activeMeterMode === 'damage' ? 'active-dmg' : ''}" onclick="switchMeterMode('damage')">
+            <img src="./img/headers/damage.png" class="tab-icon">
+            <span>DMG</span>
+        </div>
+        <div id="pip-tab-healing" class="pip-tab ${activeMeterMode === 'healing' ? 'active-heal' : ''}" onclick="switchMeterMode('healing')">
+            <img src="./img/headers/healing.png" class="tab-icon">
+            <span>HEALING</span>
+        </div>
+        <div id="pip-tab-armor" class="pip-tab ${activeMeterMode === 'armor' ? 'active-armor' : ''}" onclick="switchMeterMode('armor')">
+            <img src="./img/headers/armor.png" class="tab-icon">
+            <span>ARMOR</span>
+        </div>
+    `;
+    pipWindow.document.body.appendChild(header);
+}
+
+        // 4. Move the element into the PiP window
+        parent.replaceChild(placeholder, playerElement);
+        
+        playerElement.classList.add('pip-active');
+        pipWindow.document.body.appendChild(playerElement);
+
+        pipWindow.addEventListener("pagehide", () => {
+            pipWindow = null;
+            playerElement.classList.remove('pip-active');
+            const currentPlaceholder = document.getElementById(elementId + "-placeholder");
+            if (currentPlaceholder) originalParent.replaceChild(playerElement, currentPlaceholder);
+            renderMeter();
+            renderTracker();
+        });
+
+        // Force immediate draw
+        renderMeter();
+        renderTracker();
+
+    } catch (err) { console.error(err); }
+
+    try {
+        pipWindow = await window.documentPictureInPicture.requestWindow({
+            width: elementId === 'chat-list' ? 400 : 450,
+            height: 500,
+        });
+
+        // COPY GLOBAL FUNCTIONS TO PIP WINDOW
+        // This allows the "onmouseover" events for class icons to work inside PiP
+        pipWindow.toggleIconVariant = window.toggleIconVariant;
+
+        // ... (copy styles logic)
+
+        // Add the ID to the PiP body so getUI can find it if the element is the body
+        pipWindow.document.body.id = "pip-body"; 
+        
+        // ... (moving element logic)
+        
+        // RE-RENDER IMMEDIATELY
+        // This forces the UI to draw inside the new window instantly
+        renderMeter();
+        renderTracker();
+        if (elementId === 'chat-list') chatList.scrollTop = chatList.scrollHeight;
+
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 // INITIALIZATION
