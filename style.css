@@ -236,12 +236,24 @@ button.reset-btn:hover { background-color: #ff4d4d; border-color: #ff4d4d; }
 /* Mini Header Buttons */
 .header-btn-group { display: flex; gap: 4px; justify-content: center; }
 .mini-header-btn {
-    background: rgba(0,0,0,0.3); color: #aaa; border: 1px solid rgba(255,255,255,0.1);
-    width: 20px; height: 20px; padding: 0; font-size: 0.8rem; line-height: 1; 
-    display: flex; align-items: center; justify-content: center; border-radius: 3px;
-    cursor: pointer; transition: all 0.1s;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
 }
-.mini-header-btn:hover { background: rgba(255,255,255,0.2); color: #fff; border-color: #aaa; }
+.mini-header-btn:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: #fff;
+}
 
 .half-header span.header-total, .half-header span.header-percent { text-align: right; font-family: monospace; }
 
@@ -275,7 +287,10 @@ button.reset-btn:hover { background-color: #ff4d4d; border-color: #ff4d4d; }
 .class-icon { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; }
 .class-icon-placeholder { width: 20px; height: 20px; }
 .caret { font-size: 0.7em; transition: transform 0.2s; color: #666; }
-.player-block.expanded .caret { transform: rotate(90deg); color: #fff; }
+.player-block.expanded .caret {
+    transform: rotate(90deg);
+    color: var(--accent);
+}
 
 .spell-list { display: none; background-color: #161616; border-top: 1px solid #333; }
 .spell-list.open { display: block; }

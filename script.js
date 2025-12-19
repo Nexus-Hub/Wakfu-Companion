@@ -877,6 +877,7 @@ function isPlayerAlly(p) {
 
 // New Function: Expand or Collapse specific category
 function modifyExpansion(category, action) {
+    // Determine which dataset we are currently looking at
     let dataSet;
     if (activeMeterMode === 'damage') dataSet = fightData;
     else if (activeMeterMode === 'healing') dataSet = healData;
@@ -887,7 +888,7 @@ function modifyExpansion(category, action) {
     players.forEach(p => {
         const isAlly = isPlayerAlly(p);
         
-        // Check if player belongs to the category we are modifying
+        // Match player to the clicked header (Allies vs Enemies)
         if ((category === 'allies' && isAlly) || (category === 'enemies' && !isAlly)) {
             if (action === 'expand') {
                 expandedPlayers.add(p.name);
@@ -896,6 +897,8 @@ function modifyExpansion(category, action) {
             }
         }
     });
+
+    // Re-render to show changes
     renderMeter();
 }
 
@@ -1621,9 +1624,24 @@ function getDungeonStyles(rawType) {
     };
 }
 
+// ==========================================
+// PICTURE IN PICTURE LOGIC
+// ==========================================
 async function togglePiP(elementId, title) {
     const playerElement = document.getElementById(elementId);
-    if (pipWindow) { pipWindow.close(); return; }
+
+    // If PiP is already open, close it
+    if (pipWindow) {
+        pipWindow.close();
+        pipWindow = null;
+        return;
+    }
+
+    // Check for browser support
+    if (!('documentPictureInPicture' in window)) {
+        alert("Your browser does not support Document Picture-in-Picture. Please use the latest version of Chrome, Edge, or Opera.");
+        return;
+    }
 
     try {
         pipWindow = await window.documentPictureInPicture.requestWindow({
@@ -1631,11 +1649,12 @@ async function togglePiP(elementId, title) {
             height: 500,
         });
 
-        // Copy functions so PiP can call them
+        // Copy Global Functions to PiP Window so buttons work
         pipWindow.switchMeterMode = window.switchMeterMode;
         pipWindow.toggleIconVariant = window.toggleIconVariant;
+        pipWindow.modifyExpansion = window.modifyExpansion;
 
-        // 2. Copy Styles from the main document to the PiP document
+        // Copy Styles from the main document to the PiP document
         [...document.styleSheets].forEach((styleSheet) => {
             try {
                 if (styleSheet.cssRules) {
@@ -1651,7 +1670,6 @@ async function togglePiP(elementId, title) {
                     pipWindow.document.head.appendChild(newLink);
                 }
             } catch (e) {
-                // Handle cross-origin stylesheets
                 const link = pipWindow.document.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = styleSheet.href;
@@ -1659,91 +1677,65 @@ async function togglePiP(elementId, title) {
             }
         });
 
-        // 3. Prepare the element and its placeholder
+        // Set PiP Body Styles
+        pipWindow.document.body.style.background = "#121212";
+        pipWindow.document.body.style.display = "flex";
+        pipWindow.document.body.style.flexDirection = "column";
+        pipWindow.document.body.style.margin = "0";
+        pipWindow.document.body.className = "pip-window";
+
+        // INJECT HEADER IF COMBAT METER
+        if (elementId === 'meter-split-container') {
+            const header = pipWindow.document.createElement('div');
+            header.className = 'pip-header';
+            header.innerHTML = `
+                <div id="pip-tab-damage" class="pip-tab ${activeMeterMode === 'damage' ? 'active-dmg' : ''}" onclick="switchMeterMode('damage')">
+                    <img src="./img/headers/damage.png" class="tab-icon">
+                    <span>DMG</span>
+                </div>
+                <div id="pip-tab-healing" class="pip-tab ${activeMeterMode === 'healing' ? 'active-heal' : ''}" onclick="switchMeterMode('healing')">
+                    <img src="./img/headers/healing.png" class="tab-icon">
+                    <span>HEALING</span>
+                </div>
+                <div id="pip-tab-armor" class="pip-tab ${activeMeterMode === 'armor' ? 'active-armor' : ''}" onclick="switchMeterMode('armor')">
+                    <img src="./img/headers/armor.png" class="tab-icon">
+                    <span>ARMOR</span>
+                </div>
+            `;
+            pipWindow.document.body.appendChild(header);
+        }
+
+        // Move the element into the PiP window
         const parent = playerElement.parentElement;
         const placeholder = document.createElement('div');
         placeholder.id = elementId + "-placeholder";
         placeholder.className = "empty-state";
         placeholder.textContent = "Viewing in Picture-in-Picture mode...";
         
-        // Save references for returning the element
         const originalParent = parent;
-        const nextSibling = playerElement.nextSibling;
-
-        // Add some basic PiP styles to the new document body
-        pipWindow.document.body.style.background = "#121212";
-        pipWindow.document.body.style.display = "flex";
-        pipWindow.document.body.style.flexDirection = "column";
-        pipWindow.document.body.style.margin = "0";
-        pipWindow.document.body.style.padding = "0";
-        pipWindow.document.body.className = "pip-window";
-
-        if (elementId === 'meter-split-container') {
-    const header = pipWindow.document.createElement('div');
-    header.className = 'pip-header';
-    header.innerHTML = `
-        <div id="pip-tab-damage" class="pip-tab ${activeMeterMode === 'damage' ? 'active-dmg' : ''}" onclick="switchMeterMode('damage')">
-            <img src="./img/headers/damage.png" class="tab-icon">
-            <span>DMG</span>
-        </div>
-        <div id="pip-tab-healing" class="pip-tab ${activeMeterMode === 'healing' ? 'active-heal' : ''}" onclick="switchMeterMode('healing')">
-            <img src="./img/headers/healing.png" class="tab-icon">
-            <span>HEALING</span>
-        </div>
-        <div id="pip-tab-armor" class="pip-tab ${activeMeterMode === 'armor' ? 'active-armor' : ''}" onclick="switchMeterMode('armor')">
-            <img src="./img/headers/armor.png" class="tab-icon">
-            <span>ARMOR</span>
-        </div>
-    `;
-    pipWindow.document.body.appendChild(header);
-}
-
-        // 4. Move the element into the PiP window
         parent.replaceChild(placeholder, playerElement);
-        
         playerElement.classList.add('pip-active');
         pipWindow.document.body.appendChild(playerElement);
 
+        // Handle closing
         pipWindow.addEventListener("pagehide", () => {
             pipWindow = null;
             playerElement.classList.remove('pip-active');
             const currentPlaceholder = document.getElementById(elementId + "-placeholder");
-            if (currentPlaceholder) originalParent.replaceChild(playerElement, currentPlaceholder);
+            if (currentPlaceholder) {
+                originalParent.replaceChild(playerElement, currentPlaceholder);
+            }
             renderMeter();
             renderTracker();
+            if (elementId === 'chat-list') chatList.scrollTop = chatList.scrollHeight;
         });
 
-        // Force immediate draw
+        // Force renders
         renderMeter();
         renderTracker();
-
-    } catch (err) { console.error(err); }
-
-    try {
-        pipWindow = await window.documentPictureInPicture.requestWindow({
-            width: elementId === 'chat-list' ? 400 : 450,
-            height: 500,
-        });
-
-        // COPY GLOBAL FUNCTIONS TO PIP WINDOW
-        // This allows the "onmouseover" events for class icons to work inside PiP
-        pipWindow.toggleIconVariant = window.toggleIconVariant;
-
-        // ... (copy styles logic)
-
-        // Add the ID to the PiP body so getUI can find it if the element is the body
-        pipWindow.document.body.id = "pip-body"; 
-        
-        // ... (moving element logic)
-        
-        // RE-RENDER IMMEDIATELY
-        // This forces the UI to draw inside the new window instantly
-        renderMeter();
-        renderTracker();
-        if (elementId === 'chat-list') chatList.scrollTop = chatList.scrollHeight;
 
     } catch (err) {
-        console.error(err);
+        console.error("Failed to open PiP window:", err);
     }
 }
 
