@@ -426,11 +426,14 @@ async function checkPreviousFile() {
 function initTrackerDropdowns() {
   if (typeof professionItems === "undefined") return;
 
-  // Clear search input and datalist
+  const itemDatalist = document.getElementById("item-datalist");
+  const itemInput = document.getElementById("item-input");
+  if (!itemDatalist || !itemInput) return;
+
   itemInput.value = "";
   itemDatalist.innerHTML = "";
 
-  // 1. Populate gathering items from database.js
+  // 1. Add all items from standard gathering professions
   for (const prof in professionItems) {
     professionItems[prof].forEach((itemData) => {
       const opt = document.createElement("option");
@@ -439,7 +442,7 @@ function initTrackerDropdowns() {
     });
   }
 
-  // 2. Populate monster items from items.js (now searched as 'ALL')
+  // 2. Add all items from the "ALL" / items.js list
   if (typeof monsterResources !== "undefined") {
     monsterResources.forEach((itemData) => {
       const opt = document.createElement("option");
@@ -449,6 +452,70 @@ function initTrackerDropdowns() {
   }
 
   loadTrackerState();
+}
+
+function addTrackedItem() {
+  const itemInput = document.getElementById("item-input");
+  const itemName = itemInput.value.trim();
+  if (!itemName) return alert("Type an item name first.");
+
+  let foundItem = null;
+  let category = null;
+
+  // Search through gathering jobs
+  for (const prof in professionItems) {
+    const item = professionItems[prof].find(
+      (i) => i.name.toLowerCase() === itemName.toLowerCase()
+    );
+    if (item) {
+      foundItem = item;
+      category = prof;
+      break;
+    }
+  }
+
+  // If not found, search the monster item list
+  if (!foundItem && typeof monsterResources !== "undefined") {
+    const item = monsterResources.find(
+      (i) => i.name.toLowerCase() === itemName.toLowerCase()
+    );
+    if (item) {
+      foundItem = item;
+      category = "ALL";
+    }
+  }
+
+  if (!foundItem) return alert(`Item "${itemName}" not found in database.`);
+
+  // Duplication check
+  if (
+    trackedItems.find(
+      (t) => t.name === foundItem.name && t.rarity === foundItem.rarity
+    )
+  ) {
+    return alert("Item already on tracking list.");
+  }
+
+  const target = prompt(
+    `Tracking ${foundItem.name}. Enter target quantity:`,
+    "100"
+  );
+  if (target === null) return;
+
+  trackedItems.push({
+    id: Date.now(),
+    name: foundItem.name,
+    current: 0,
+    target: parseInt(target) || 100,
+    level: foundItem.level,
+    rarity: foundItem.rarity,
+    profession: category, // Saves if it's Miner, ALL, etc.
+    imgId: foundItem.imgId || null,
+  });
+
+  itemInput.value = "";
+  saveTrackerState();
+  renderTracker();
 }
 
 // --- View Toggle ---
@@ -564,109 +631,86 @@ function removeTrackedItem(id) {
 }
 
 function renderTracker() {
-    const listEl = getUI("tracker-list");
-    if (!listEl) return;
+  const listEl = getUI("tracker-list");
+  if (!listEl) return;
+  listEl.innerHTML = "";
 
-    // Clear current UI
-    listEl.innerHTML = "";
+  if (trackedItems.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">Add items to track...</div>';
+    return;
+  }
 
-    if (trackedItems.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">Add items to track...</div>';
-        return;
+  const isGrid = trackerViewMode === "grid";
+  listEl.classList.toggle("grid-view", isGrid);
+
+  trackedItems.forEach((item, index) => {
+    const isComplete = item.current >= item.target && item.target > 0;
+    const progress = Math.min((item.current / (item.target || 1)) * 100, 100);
+
+    // TOP-LEFT CORNER ICON
+    const profFile =
+      item.profession === "ALL"
+        ? "monster_resource"
+        : item.profession.toLowerCase().replace(/\s+/g, "_");
+    const profIconPath = `img/resources/${profFile}.png`;
+
+    // ITEM IMAGE logic (Remote for ALL)
+    let itemIconPath;
+    if (item.profession === "ALL" && item.imgId) {
+      itemIconPath = `https://vertylo.github.io/wakassets/items/${item.imgId}.png`;
+    } else {
+      const safeItemName = item.name.replace(/\s+/g, "_");
+      itemIconPath = `img/resources/${safeItemName}.png`;
     }
 
-    const isGrid = trackerViewMode === "grid";
-    listEl.classList.toggle("grid-view", isGrid);
+    const rarityName = (item.rarity || "common").toLowerCase();
+    const tooltipText = `${
+      item.name
+    }\nProgress: ${item.current.toLocaleString()} / ${item.target.toLocaleString()}`;
 
-    trackedItems.forEach((item, index) => {
-        const isComplete = item.current >= item.target && item.target > 0;
-        const progress = Math.min((item.current / (item.target || 1)) * 100, 100);
+    if (isGrid) {
+      const slot = document.createElement("div");
+      slot.className = `inventory-slot ${isComplete ? "complete" : ""}`;
+      slot.setAttribute("draggable", "true");
+      slot.dataset.index = index;
+      slot.onclick = () => openTrackerModal(item.id);
+      slot.onmouseenter = (e) => showTooltip(tooltipText, e);
+      slot.onmouseleave = () => hideTooltip();
+      slot.addEventListener("dragstart", handleTrackDragStart);
+      slot.addEventListener("dragover", handleTrackDragOver);
+      slot.addEventListener("drop", handleTrackDrop);
 
-        // 1. TOP-LEFT ICON: Remaints Local
-        const profFilename = (item.profession === "ALL") 
-            ? "monster_resource" 
-            : item.profession.toLowerCase().replace(/\s+/g, "_");
-        const profIconPath = `img/resources/${profFilename}.png`;
-
-        // 2. MAIN ITEM ICON: Use Remote URL for "ALL", Local for others
-        let itemIconPath;
-        if (item.profession === "ALL" && item.imgId) {
-            // Temporary remote source
-            itemIconPath = `https://vertylo.github.io/wakassets/items/${item.imgId}.png`;
-        } else {
-            const safeItemName = item.name.replace(/\s+/g, "_");
-            itemIconPath = `img/resources/${safeItemName}.png`;
-        }
-
-        const rarityName = (item.rarity || "common").toLowerCase();
-        const tooltipText = `${item.name}\nProgress: ${item.current.toLocaleString()} / ${item.target.toLocaleString()} (${Math.floor(progress)}%)`;
-
-        if (isGrid) {
-            const slot = document.createElement("div");
-            slot.className = `inventory-slot ${isComplete ? "complete" : ""}`;
-            slot.setAttribute("draggable", "true");
-            slot.dataset.index = index;
-
-            slot.onmouseenter = (e) => showTooltip(tooltipText, e);
-            slot.onmousemove = (e) => updateTooltipPosition(e);
-            slot.onmouseleave = () => hideTooltip();
-            slot.onclick = () => openTrackerModal(item.id);
-
-            slot.addEventListener("dragstart", handleTrackDragStart);
-            slot.addEventListener("dragover", handleTrackDragOver);
-            slot.addEventListener("drop", handleTrackDrop);
-
-            slot.innerHTML = `
+      slot.innerHTML = `
                 <img src="${profIconPath}" class="slot-prof-icon" onerror="this.style.display='none'">
-                <img src="${itemIconPath}" class="slot-icon" 
-                     onerror="this.src='img/resources/not_found.png';">
+                <img src="${itemIconPath}" class="slot-icon" onerror="this.src='img/resources/not_found.png';">
                 <div class="slot-count">${item.current.toLocaleString()}</div>
-                <div class="slot-progress-container">
-                    <div class="slot-progress-bar" style="width: ${progress}%"></div>
-                </div>
+                <div class="slot-progress-container"><div class="slot-progress-bar" style="width: ${progress}%"></div></div>
             `;
-            listEl.appendChild(slot);
-        } else {
-            const row = document.createElement("div");
-            row.className = `tracked-item-row ${isComplete ? "complete" : ""}`;
-            row.setAttribute("draggable", "true");
-            row.dataset.index = index;
-
-            row.addEventListener("dragstart", handleTrackDragStart);
-            row.addEventListener("dragover", handleTrackDragOver);
-            row.addEventListener("drop", handleTrackDrop);
-
-            row.innerHTML = `
+      listEl.appendChild(slot);
+    } else {
+      const row = document.createElement("div");
+      row.className = `tracked-item-row ${isComplete ? "complete" : ""}`;
+      row.innerHTML = `
                 <div class="t-left-group" style="cursor: pointer;" onclick="openTrackerModal(${item.id})">
-                    <img src="${itemIconPath}" class="resource-icon" 
-                         onerror="this.src='img/resources/not_found.png';">
+                    <img src="${itemIconPath}" class="resource-icon" onerror="this.src='img/resources/not_found.png';">
                     <div class="t-info-text">
-                        <img src="img/quality/${rarityName}.png" class="rarity-icon" onerror="this.style.display='none'">
+                        <img src="img/quality/${rarityName}.png" class="rarity-icon">
                         <span class="t-level-badge">Lvl. ${item.level}</span>
                         <span class="t-item-name">${item.name}</span>
                     </div>
                 </div>
                 <div class="t-input-container">
-                    <input type="number" class="t-input" value="${item.current}" onchange="updateItemValue(${item.id}, 'current', this.value)">
-                    <span class="t-separator">/</span>
+                    <input type="number" class="t-input" value="${item.current}" onchange="updateItemValue(${item.id}, 'current', this.value)"> / 
                     <input type="number" class="t-input" value="${item.target}" onchange="updateItemValue(${item.id}, 'target', this.value)">
                 </div>
                 <div class="t-right-group">
-                    <img src="${profIconPath}" class="t-job-icon" onerror="this.style.display='none'">
-                    <div class="t-status-col">
-                        <button class="t-delete-btn" onclick="removeTrackedItem(${item.id})">×</button>
-                        <span class="t-progress-text">${Math.floor(progress)}%</span>
-                    </div>
+                    <img src="${profIconPath}" class="t-job-icon">
+                    <button class="t-delete-btn" onclick="removeTrackedItem(${item.id})">×</button>
                 </div>
             `;
-            const infoArea = row.querySelector(".t-left-group");
-            infoArea.onmouseenter = (e) => showTooltip(tooltipText, e);
-            infoArea.onmousemove = (e) => updateTooltipPosition(e);
-            infoArea.onmouseleave = () => hideTooltip();
-
-            listEl.appendChild(row);
-        }
-    });
+      listEl.appendChild(row);
+    }
+  });
 }
 
 // --- Drag & Drop Handlers ---
@@ -725,22 +769,28 @@ function handleTrackDragEnd(e) {
 }
 
 function processItemLog(line) {
-  const match = line.match(/You have picked up (\d+)x (.*?) \./i);
+  // Target: "You have picked up 92x Taroudium Ore . "
+  // Regex looks for digits, then 'x', then grabs everything until a period or multiple spaces
+  const match = line.match(/picked up (\d+)x\s+([^.]+)/i);
+
   if (match) {
     const qty = parseInt(match[1], 10);
-    const rawName = match[2].trim().toLowerCase();
+    // Clean name: handle non-breaking spaces and trim any extra junk
+    const cleanLogName = match[2]
+      .replace(/\u00A0/g, " ")
+      .trim()
+      .toLowerCase();
+
     let updated = false;
     trackedItems.forEach((item) => {
-      const trackNameLower = item.name.toLowerCase();
-      if (
-        trackNameLower.includes(rawName) ||
-        rawName.includes(trackNameLower)
-      ) {
+      // Comparison: ensure the database name matches exactly what we found
+      if (item.name.toLowerCase().trim() === cleanLogName) {
         item.current += qty;
         updated = true;
         showTrackerNotification(qty, item.name);
       }
     });
+
     if (updated) {
       saveTrackerState();
       renderTracker();
@@ -749,12 +799,20 @@ function processItemLog(line) {
 }
 
 function showTrackerNotification(qty, itemName) {
-  const container = document.getElementById("tracker-notifications");
-  if (!container) return;
+  let container = document.getElementById("tracker-notifications");
+
+  // Safety: Create the container if it doesn't exist in the HTML
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "tracker-notifications";
+    document.body.appendChild(container);
+  }
+
   const toast = document.createElement("div");
   toast.className = "tracker-toast";
   toast.textContent = `Picked up ${qty}x ${itemName}`;
   container.appendChild(toast);
+
   setTimeout(() => {
     if (toast.parentNode) toast.parentNode.removeChild(toast);
   }, 3000);
@@ -851,9 +909,10 @@ async function parseFile() {
 }
 
 function processLine(line) {
-  if (!line || line.trim() === "" || line.includes("[Game Log]")) return;
+  // FIXED: Removed the guard that was blocking [Game Log] lines
+  if (!line || line.trim() === "") return;
 
-  // Duplication Check (Full line match including timestamp)
+  // Prevent reprocessing same line if filesystem check is rapid
   if (logLineCache.has(line)) return;
   logLineCache.add(line);
   if (logLineCache.size > MAX_CACHE_SIZE) {
@@ -861,21 +920,64 @@ function processLine(line) {
     logLineCache.delete(firstItem);
   }
 
+  // Keywords for all supported languages
+  const lootKeywords = [
+    "picked up",
+    "ramassé",
+    "obtenu",
+    "recogido",
+    "obtenido",
+    "apanhou",
+    "obteve",
+  ];
+  const lineLower = line.toLowerCase();
+  const isLoot = lootKeywords.some((kw) => lineLower.includes(kw));
+
   try {
-    if (
-      line.includes("[Fight Log]") ||
-      line.includes("[Information (combat)]") ||
-      line.includes("[Información (combate)]") ||
-      line.includes("[Registro de Lutas]")
+    if (isLoot) {
+      processItemLog(line);
+    } else if (
+      lineLower.includes("[fight log]") ||
+      lineLower.includes("[information (combat)]") ||
+      lineLower.includes("[información (combate)]") ||
+      lineLower.includes("[registro de lutas]")
     ) {
       processFightLog(line);
-    } else if (line.includes("You have picked up")) {
-      processItemLog(line);
     } else if (line.match(/^\d{2}:\d{2}:\d{2}/)) {
       processChatLog(line);
     }
   } catch (err) {
-    console.error(err);
+    console.error("Parsing Error:", err);
+  }
+}
+
+function processItemLog(line) {
+  // Regex looks for digits followed by 'x', then grabs everything until the trailing period or end of string.
+  // Works for: "picked up 92x Taroudium Ore . " or "obtenido 2x Trigo ."
+  const match = line.match(/(\d+)x\s+([^.]+)/i);
+
+  if (match) {
+    const qty = parseInt(match[1], 10);
+    // Normalize string: Handle hidden non-breaking spaces (\u00A0) and trim leading/trailing whitespace
+    const cleanLogName = match[2]
+      .replace(/\u00A0/g, " ")
+      .trim()
+      .toLowerCase();
+
+    let updated = false;
+    trackedItems.forEach((item) => {
+      // Comparison between cleaned database name and cleaned log name
+      if (item.name.toLowerCase().trim() === cleanLogName) {
+        item.current += qty;
+        updated = true;
+        showTrackerNotification(qty, item.name);
+      }
+    });
+
+    if (updated) {
+      saveTrackerState();
+      renderTracker();
+    }
   }
 }
 
@@ -2258,45 +2360,48 @@ async function togglePiP(elementId, title) {
 }
 
 function openTrackerModal(itemId) {
-    const item = trackedItems.find((t) => t.id === itemId);
-    if (!item) return;
+  const item = trackedItems.find((t) => t.id === itemId);
+  if (!item) return;
 
-    const modal = document.getElementById("tracker-modal");
+  const modal = document.getElementById("tracker-modal");
 
-    // MAIN ITEM ICON: Use Remote URL for "ALL", Local for others
-    const itemIconPath = (item.profession === "ALL" && item.imgId)
-        ? `https://vertylo.github.io/wakassets/items/${item.imgId}.png`
-        : `img/resources/${item.name.replace(/\s+/g, "_")}.png`;
+  // MAIN ITEM ICON: Use Remote URL for "ALL", Local for others
+  const itemIconPath =
+    item.profession === "ALL" && item.imgId
+      ? `https://vertylo.github.io/wakassets/items/${item.imgId}.png`
+      : `img/resources/${item.name.replace(/\s+/g, "_")}.png`;
 
-    document.getElementById("modal-item-name").textContent = item.name;
-    const modalIcon = document.getElementById("modal-item-icon");
-    modalIcon.src = itemIconPath;
-    
-    // Fallback if remote image is missing or doesn't load
-    modalIcon.onerror = function() { 
-        this.src = 'img/resources/not_found.png'; 
-        this.onerror = null; 
-    };
+  document.getElementById("modal-item-name").textContent = item.name;
+  const modalIcon = document.getElementById("modal-item-icon");
+  modalIcon.src = itemIconPath;
 
-    document.getElementById("modal-input-current").value = item.current;
-    document.getElementById("modal-input-target").value = item.target;
+  // Fallback if remote image is missing or doesn't load
+  modalIcon.onerror = function () {
+    this.src = "img/resources/not_found.png";
+    this.onerror = null;
+  };
 
-    document.getElementById("modal-save-btn").onclick = () => {
-        const newCur = parseInt(document.getElementById("modal-input-current").value) || 0;
-        const newTar = parseInt(document.getElementById("modal-input-target").value) || 0;
-        updateItemValue(item.id, 'current', newCur);
-        updateItemValue(item.id, 'target', newTar);
-        closeTrackerModal();
-    };
+  document.getElementById("modal-input-current").value = item.current;
+  document.getElementById("modal-input-target").value = item.target;
 
-    document.getElementById("modal-delete-btn").onclick = () => {
-        if (confirm(`Stop tracking ${item.name}?`)) {
-            removeTrackedItem(item.id);
-            closeTrackerModal();
-        }
-    };
+  document.getElementById("modal-save-btn").onclick = () => {
+    const newCur =
+      parseInt(document.getElementById("modal-input-current").value) || 0;
+    const newTar =
+      parseInt(document.getElementById("modal-input-target").value) || 0;
+    updateItemValue(item.id, "current", newCur);
+    updateItemValue(item.id, "target", newTar);
+    closeTrackerModal();
+  };
 
-    modal.style.display = "flex";
+  document.getElementById("modal-delete-btn").onclick = () => {
+    if (confirm(`Stop tracking ${item.name}?`)) {
+      removeTrackedItem(item.id);
+      closeTrackerModal();
+    }
+  };
+
+  modal.style.display = "flex";
 }
 
 function closeTrackerModal() {

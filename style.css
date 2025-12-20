@@ -820,6 +820,7 @@ button.reset-btn:hover {
   z-index: 20;
   align-items: center;
 }
+
 .tracker-toast {
   background: rgba(0, 0, 0, 0.9);
   color: #2ecc71;
