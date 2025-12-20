@@ -76,6 +76,9 @@ let currentChatFilter = "all";
 // Item Tracker State
 let trackedItems = [];
 
+// Auto Fight State
+let awaitingNewFight = false;
+
 // ELEMENTS
 const setupPanel = document.getElementById("setup-panel");
 const dropZone = document.getElementById("drop-zone");
@@ -184,7 +187,6 @@ function hideTooltip() {
 // ==========================================
 generateSpellMap();
 renderMeter();
-updateButtonText();
 initTrackerDropdowns();
 setupDragAndDrop();
 
@@ -951,10 +953,31 @@ async function parseFile() {
 }
 
 function processLine(line) {
-  // FIXED: Removed the guard that was blocking [Game Log] lines
   if (!line || line.trim() === "") return;
 
-  // Prevent reprocessing same line if filesystem check is rapid
+  const lineLower = line.toLowerCase();
+
+  // EXPLICIT SYSTEM CHECK: Requires the [Bracket Tag] AND the message
+  const systemEndPattens = [
+    { tag: "[fight log]", msg: "fight is over" },
+    { tag: "[information (combat)]", msg: "le combat est terminé" },
+    { tag: "[información (combate)]", msg: "el combate ha terminado" },
+    { tag: "[registro de lutas]", msg: "a luta terminou" },
+  ];
+
+  // Logic for flagging that the battle ended (System only)
+  const battleJustFinished = systemEndPattens.some(
+    (p) => lineLower.includes(p.tag) && lineLower.includes(p.msg)
+  );
+
+  if (battleJustFinished) {
+    awaitingNewFight = true;
+    updateWatchdogUI();
+    // Do not return here, we still need to add to cache,
+    // but the flag is now set securely from system logs.
+  }
+
+  // Handle Log deduplication
   if (logLineCache.has(line)) return;
   logLineCache.add(line);
   if (logLineCache.size > MAX_CACHE_SIZE) {
@@ -962,20 +985,19 @@ function processLine(line) {
     logLineCache.delete(firstItem);
   }
 
-  // Keywords for all supported languages
-  const lootKeywords = [
-    "picked up",
-    "ramassé",
-    "obtenu",
-    "recogido",
-    "obtenido",
-    "apanhou",
-    "obteve",
-  ];
-  const lineLower = line.toLowerCase();
-  const isLoot = lootKeywords.some((kw) => lineLower.includes(kw));
-
+  // ROUTING
   try {
+    const isLootKeywords = [
+      "picked up",
+      "ramassé",
+      "obtenu",
+      "recogido",
+      "obtenido",
+      "apanhou",
+      "obteve",
+    ];
+    const isLoot = isLootKeywords.some((kw) => lineLower.includes(kw));
+
     if (isLoot) {
       processItemLog(line);
     } else if (
@@ -1124,24 +1146,29 @@ function processFightLog(line) {
   const armorUnits = "Armor|Armadura|Armure";
   const numPattern = "[\\d,.\\s]+";
 
-  const parts = line.split(
-    /\[(?:Fight Log|Information \(combat\)|Información \(combate\)|Registro de Lutas)\] /
-  );
+  const parts = line.split(/\] /);
   if (parts.length < 2) return;
-  const content = parts[1].trim();
+  const content = parts.slice(1).join("] ").trim();
 
-  // 1. TURN END DETECTION
+  // Handle Battle Reset logic
   if (
-    content.includes("carried over to the next turn") ||
-    content.includes("tour suivant")
+    isAutoResetOn &&
+    awaitingNewFight &&
+    !content.toLowerCase().includes("over")
   ) {
+    performReset(true);
+    awaitingNewFight = false;
+  }
+
+  // 1. Turn/Time Carryover
+  if (content.includes("carried over") || content.includes("tour suivant")) {
     currentSpell = "Passive / Indirect";
     return;
   }
 
-  // 2. CAST DETECTION
+  // 2. Cast Detection
   const castMatch = content.match(
-    /^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/
+    /^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/i
   );
   if (castMatch) {
     currentCaster = castMatch[1].trim();
@@ -1150,7 +1177,7 @@ function processFightLog(line) {
     return;
   }
 
-  // 3. ACTION DETECTION (Damage, Healing, Armor)
+  // 3. Action Detection (Damage/Heal/Armor)
   const actionMatch = content.match(
     new RegExp(`^(.*?): ([+-])?(${numPattern}) (${hpUnits}|${armorUnits})(.*)`)
   );
@@ -1163,33 +1190,26 @@ function processFightLog(line) {
 
     if (isNaN(amount) || amount <= 0) return;
 
-    const parentheticals = suffix.match(/\(([^)]+)\)/g) || [];
-    const details = parentheticals.map((p) => p.slice(1, -1));
+    // Extract suffixes: e.g., (Fire) (Lost) (Block!)
+    const details = (suffix.match(/\(([^)]+)\)/g) || []).map((p) =>
+      p.slice(1, -1)
+    );
 
     let detectedElement = null;
     let spellOverride = null;
 
-    // Determine Spell Source (Iterate backwards to find overrides like "Cog" or "Burning Armor")
-    for (let i = details.length - 1; i >= 0; i--) {
-      const d = details[i];
+    for (const d of details) {
       const norm = normalizeElement(d);
       if (norm) {
-        if (!detectedElement) detectedElement = norm;
+        detectedElement = norm; // Found (Fire) or (Earth)
       } else {
-        const noise = [
-          "Block!",
-          "Critical",
-          "Critical Hit",
-          "Wrath",
-          "Countered",
-          "Double",
-          "The Art of Taming",
-          "Neutrality",
-          "Raw Power",
-          "Exalted",
-          "Calm",
-        ];
-        if (!noise.includes(d) && !spellOverride && allKnownSpells.has(d)) {
+        // Check for "Lost" or other procs as the primary spell source
+        if (d.toLowerCase() === "lost") {
+          spellOverride = "Lost";
+        } else if (
+          typeof allKnownSpells !== "undefined" &&
+          allKnownSpells.has(d)
+        ) {
           spellOverride = d;
         }
       }
@@ -1198,23 +1218,18 @@ function processFightLog(line) {
     let finalCaster = currentCaster;
     let finalSpell = spellOverride || currentSpell;
 
-    // Handle Summons/Bindings logic
-    // If the caster is a bound summon, attribute to their master
+    // Bind summons to masters
     if (summonBindings[finalCaster]) {
       const master = summonBindings[finalCaster];
       finalSpell = `${finalSpell} (${finalCaster})`;
       finalCaster = master;
     }
 
-    // Specific fix for reflective passives (Sacrier)
-    if (
-      spellOverride === "Burning Armor" ||
-      spellOverride === "Armadura Ardiente"
-    ) {
+    // Specific logic for reflect/state passives
+    if (["Burning Armor", "Armadura Ardiente"].includes(spellOverride)) {
       finalCaster = target;
     }
 
-    // Routing to Data Sets
     const isArmor = unit.match(new RegExp(armorUnits, "i"));
     if (isArmor) {
       updateCombatData(armorData, target, finalSpell, amount, null);
@@ -1224,22 +1239,62 @@ function processFightLog(line) {
         finalCaster,
         finalSpell,
         amount,
-        detectedElement
+        detectedElement || "Neutral"
       );
     } else {
-      // Damage uses the current caster detected in step 2
       updateCombatData(
         fightData,
         finalCaster,
         finalSpell,
         amount,
-        detectedElement
+        detectedElement || "Neutral"
       );
     }
 
     lastCombatTime = Date.now();
     updateWatchdogUI();
   }
+}
+
+function normalizeElement(el) {
+  if (!el) return null;
+  const low = el.toLowerCase().trim();
+  const elementMap = {
+    // English
+    fire: "Fire",
+    water: "Water",
+    earth: "Earth",
+    air: "Air",
+    stasis: "Stasis",
+    light: "Light",
+    // French
+    feu: "Fire",
+    eau: "Water",
+    terre: "Earth",
+    aire: "Air",
+    stase: "Stasis",
+    lumière: "Light",
+    // Spanish
+    fuego: "Fire",
+    agua: "Water",
+    tierra: "Earth",
+    aire: "Air",
+    estasis: "Stasis",
+    luz: "Light",
+    // Portuguese
+    fogo: "Fire",
+    água: "Water",
+    terra: "Earth",
+    ar: "Air",
+    estase: "Stasis",
+    luz: "Light",
+  };
+  return (
+    elementMap[low] ||
+    (["Fire", "Water", "Earth", "Air", "Stasis", "Light"].includes(el)
+      ? el
+      : null)
+  );
 }
 
 // Helper to keep code clean
@@ -1358,10 +1413,14 @@ function performReset() {
   playerClasses = {};
   summonBindings = {};
   playerIconCache = {};
-  playerVariantState = {}; // Reset gender toggles
+  playerVariantState = {};
   manualOverrides = {};
   currentCaster = "Unknown";
   currentSpell = "Unknown Spell";
+
+  // IMPORTANT: Reset our state flag
+  awaitingNewFight = false;
+
   renderMeter();
   updateWatchdogUI();
 }
@@ -1379,13 +1438,13 @@ function renderMeter() {
 
   const players = Object.values(dataSet);
 
-  // Use getUI instead of document.getElementById
+  // Use getUI helper to ensure compatibility with Picture-in-Picture window
   const alliesContainer = getUI("list-allies");
   const enemiesContainer = getUI("list-enemies");
   const alliesTotalEl = getUI("allies-total-val");
   const enemiesTotalEl = getUI("enemies-total-val");
 
-  if (!alliesContainer || !enemiesContainer) return; // Guard for PiP transition
+  if (!alliesContainer || !enemiesContainer) return;
 
   if (players.length === 0) {
     alliesContainer.innerHTML = `<div class="empty-state">Waiting for combat...</div>`;
@@ -1433,20 +1492,17 @@ function renderMeter() {
           : "0.0%";
       const isExpanded = expandedPlayers.has(p.name);
 
-      // --- ICON OPTIMIZATION ---
+      // --- ICON LOGIC (Class + Gender Toggle vs Creature) ---
       let iconHtml = playerIconCache[p.name];
 
       if (!iconHtml) {
         const classIconName = playerClasses[p.name];
-
         if (classIconName) {
-          // Check persistent state for gender
           const isAlt = playerVariantState[p.name];
           const currentSrc = isAlt
             ? `./img/classes/${classIconName}-f.png`
             : `./img/classes/${classIconName}.png`;
 
-          // Generate HTML with persistent toggle handler
           iconHtml = `<img src="${currentSrc}" 
                                      class="class-icon" 
                                      title="${classIconName}" 
@@ -1456,46 +1512,18 @@ function renderMeter() {
                                      )}', this)" 
                                      onerror="this.src='./img/classes/not_found.png'; this.onerror=null;">`;
         } else {
-          // Creature logic
           const safeName = p.name.replace(/\s+/g, "_");
           iconHtml = `<img src="./img/creatures/100px-${safeName}.png" class="class-icon" onerror="this.src='./img/classes/not_found.png'; this.onerror=null;">`;
         }
-
         playerIconCache[p.name] = iconHtml;
       }
-      // --- END ICON OPTIMIZATION ---
 
-      // --- DRAG & DROP SETUP ---
-      // -------------------------
-
+      // Create the main block
       const rowBlock = document.createElement("div");
-      rowBlock.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        rowBlock.classList.add("drag-target"); // Add a CSS class for visual feedback
-      });
-
-      rowBlock.addEventListener("dragleave", () => {
-        rowBlock.classList.remove("drag-target");
-      });
-
-      rowBlock.addEventListener("drop", (e) => {
-        e.preventDefault();
-        rowBlock.classList.remove("drag-target");
-        const draggedName = e.dataTransfer.getData("text/plain");
-        const targetMasterName = p.name;
-
-        if (draggedName && draggedName !== targetMasterName) {
-          // Bind the dragged entity to the target
-          summonBindings[draggedName] = targetMasterName;
-
-          // Merge existing data immediately
-          mergeSummonData(draggedName, targetMasterName);
-          renderMeter();
-        }
-      });
       rowBlock.className = `player-block ${isExpanded ? "expanded" : ""}`;
       rowBlock.setAttribute("draggable", "true");
 
+      // --- DRAG & DROP BINDING EVENTS ---
       rowBlock.addEventListener("dragstart", (e) => {
         e.dataTransfer.setData("text/plain", p.name);
         rowBlock.style.opacity = "0.5";
@@ -1503,7 +1531,27 @@ function renderMeter() {
       rowBlock.addEventListener("dragend", (e) => {
         rowBlock.style.opacity = "1";
       });
+      rowBlock.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        rowBlock.classList.add("drag-target");
+      });
+      rowBlock.addEventListener("dragleave", () => {
+        rowBlock.classList.remove("drag-target");
+      });
+      rowBlock.addEventListener("drop", (e) => {
+        e.preventDefault();
+        rowBlock.classList.remove("drag-target");
+        const draggedName = e.dataTransfer.getData("text/plain");
+        const targetMasterName = p.name;
 
+        if (draggedName && draggedName !== targetMasterName) {
+          summonBindings[draggedName] = targetMasterName;
+          mergeSummonData(draggedName, targetMasterName);
+          renderMeter();
+        }
+      });
+
+      // Style determination based on tab
       let barClass, textClass;
       if (activeMeterMode === "damage") {
         barClass = "damage-bar";
@@ -1532,6 +1580,7 @@ function renderMeter() {
             `;
       rowBlock.appendChild(mainRow);
 
+      // --- SPELL BREAKDOWN (ELEMENT ICONS & LOST HITS) ---
       if (isExpanded) {
         const spellContainer = document.createElement("div");
         spellContainer.className = "spell-list open";
@@ -1550,22 +1599,13 @@ function renderMeter() {
           const spellContribPercent =
             p.total > 0 ? ((s.val / p.total) * 100).toFixed(1) + "%" : "0.0%";
 
+          // FIXED ELEMENT ICON MAPPING
+          let iconName = (s.element || "neutral").toLowerCase();
+          const iconPath = `./img/elements/${iconName}.png`;
+          const iconHtml = `<img src="${iconPath}" class="spell-icon" onerror="this.src='./img/elements/neutral.png'">`;
+
           const spellRow = document.createElement("div");
           spellRow.className = "spell-row";
-
-          const validElements = [
-            "Fire",
-            "Water",
-            "Earth",
-            "Air",
-            "Stasis",
-            "Light",
-          ];
-          let iconName = "neutral";
-          if (s.element && validElements.includes(s.element)) {
-            iconName = s.element.toLowerCase();
-          }
-          const iconHtml = `<img src="./img/elements/${iconName}.png" class="spell-icon" onerror="this.src='./img/elements/neutral.png'">`;
 
           spellRow.innerHTML = `
                         <div class="spell-bg-bar" style="width: ${spellBarPercent}%"></div>
@@ -1953,48 +1993,36 @@ autoResetBtn.addEventListener("click", () => {
   updateWatchdogUI();
 });
 
-timerInput.addEventListener("input", (e) => {
-  let val = parseInt(e.target.value, 10);
-  if (isNaN(val) || val < 5) val = 5;
-  resetDelayMs = val * 1000;
-  updateWatchdogUI();
-});
-
 function startWatchdog() {
   if (watchdogIntervalId) clearInterval(watchdogIntervalId);
   watchdogIntervalId = setInterval(updateWatchdogUI, 500);
 }
 
 function updateWatchdogUI() {
-  const formatTime = (ms) => {
-    const s = Math.ceil(ms / 1000);
-    return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
-  };
+  // autoResetText and autoResetBtn were defined at the top of the script
+  if (!autoResetText || !autoResetBtn) return;
 
-  // Check if any data exists
-  const hasData =
-    Object.keys(fightData).length > 0 ||
-    Object.keys(healData).length > 0 ||
-    Object.keys(armorData).length > 0;
-
-  if (!isAutoResetOn || !hasData) {
-    autoResetText.textContent = `Auto Reset (${formatTime(resetDelayMs)})`;
+  if (!isAutoResetOn) {
+    autoResetText.textContent = "Auto Reset: OFF";
+    autoResetBtn.style.borderColor = "#444";
+    autoResetText.style.color = "#aaa";
     return;
   }
-  const remaining = resetDelayMs - (Date.now() - lastCombatTime);
-  if (remaining <= 0) {
-    performReset();
-    autoResetText.textContent = `Auto Reset (${formatTime(resetDelayMs)})`;
-  } else {
-    autoResetText.textContent = `Auto Reset (${formatTime(remaining)})`;
-  }
-}
 
-function updateButtonText() {
-  const s = parseInt(timerInput.value, 10);
-  autoResetText.textContent = `Auto Reset (${Math.floor(s / 60)}:${(s % 60)
-    .toString()
-    .padStart(2, "0")})`;
+  // Handle visual states for the new event-based system
+  if (awaitingNewFight) {
+    autoResetText.textContent = "READY (Wait next fight)";
+    autoResetText.style.color = "#00e1ff";
+    autoResetBtn.style.borderColor = "#00e1ff";
+  } else if (Object.keys(fightData).length > 0) {
+    autoResetText.textContent = "Next Battle Clears Meter";
+    autoResetText.style.color = "#fff";
+    autoResetBtn.style.borderColor = "var(--btn-active-green)";
+  } else {
+    autoResetText.textContent = "Auto Reset: ON";
+    autoResetText.style.color = "#fff";
+    autoResetBtn.style.borderColor = "var(--btn-active-green)";
+  }
 }
 
 // ==========================================
