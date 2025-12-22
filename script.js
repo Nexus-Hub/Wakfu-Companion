@@ -1199,8 +1199,6 @@ function processFightLog(line) {
     if (isNaN(amount) || amount <= 0) return;
 
     // --- SUMMON SPAWN FILTER ---
-    // If the target is a known summon (like Tree, Coney, etc.)
-    // and it's receiving +HP, we ignore it to prevent summoning from counting as healing.
     const isSummon =
       typeof allySummons !== "undefined" &&
       allySummons.some((s) => target.toLowerCase().includes(s.toLowerCase()));
@@ -1208,9 +1206,8 @@ function processFightLog(line) {
     if (sign === "+" && isSummon && unit.match(new RegExp(hpUnits, "i"))) {
       return;
     }
-    // ---------------------------
 
-    // Extract suffixes: e.g., (Fire) (Lost) (Block!)
+    // Extract suffixes: e.g., (Fire) (Lost) (Regeneration Potion)
     const details = (suffix.match(/\(([^)]+)\)/g) || []).map((p) =>
       p.slice(1, -1)
     );
@@ -1218,16 +1215,25 @@ function processFightLog(line) {
     let detectedElement = null;
     let spellOverride = null;
 
+    // Noise to ignore when looking for procs/items
+    const noise = [
+      "Block!",
+      "Critical",
+      "Critical Hit",
+      "Critical Hit Expert",
+      "Slow Influence",
+    ];
+
     for (const d of details) {
       const norm = normalizeElement(d);
       if (norm) {
-        detectedElement = norm; // Found (Fire) or (Earth)
-      } else {
-        // Check for "Lost" or other procs as the primary spell source
-        if (d.toLowerCase() === "lost") {
-          spellOverride = "Lost";
-        } else if (
-          typeof allKnownSpells !== "undefined" &&
+        detectedElement = norm;
+      } else if (!noise.includes(d)) {
+        // If the detail is "Lost", a Potion, a Prayer, or a known spell, override the name
+        if (
+          d.toLowerCase() === "lost" ||
+          d.includes("Potion") ||
+          d.includes("Prayer") ||
           allKnownSpells.has(d)
         ) {
           spellOverride = d;
@@ -1235,7 +1241,13 @@ function processFightLog(line) {
       }
     }
 
+    // ATTRIBUTION LOGIC:
+    // If it's a heal and we don't have a current caster, attribute to target (Self-item/passive)
     let finalCaster = currentCaster;
+    if (sign === "+" && (currentCaster === "Unknown" || !currentCaster)) {
+      finalCaster = target;
+    }
+
     let finalSpell = spellOverride || currentSpell;
 
     // Bind summons to masters
