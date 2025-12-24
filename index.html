@@ -304,7 +304,7 @@
             </div>
 
             <!-- Section 3: Dungeon Forecast -->
-            <div class="sidebar-section" id="sec-forecast">
+<div class="sidebar-section" id="sec-forecast">
     <h4 onclick="toggleSidebarSection('sec-forecast')">
         <div class="header-left">
             <img src="img/headers/dungeon_forecast.png" class="header-label-icon" onerror="this.style.display='none'">
@@ -312,23 +312,23 @@
         </div>
         <span class="section-arrow">▼</span>
     </h4>
-                
-                <div class="section-content">
-                    <div class="forecast-nav" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: #222; padding: 5px; border-radius: 4px;">
-                        <button id="fc-prev" style="background:#444; border:none; color:white; cursor:pointer; width:30px; height:30px; border-radius:4px;">&lt;</button>
-                        <span id="fc-date-display" style="font-weight: bold; color: var(--accent);">--/--/----</span>
-                        <button id="fc-next" style="background:#444; border:none; color:white; cursor:pointer; width:30px; height:30px; border-radius:4px;">&gt;</button>
-                    </div>
-
-                    <div id="forecast-content" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
-                        <div style="text-align:center; color:#888; font-style:italic;">Loading...</div>
-                    </div>
-
-                    <div style="margin-top: 15px; text-align: center; font-size: 0.7em; color: #666; font-style: italic;">
-                        Using data of Narakia et Vicky Zweistein
-                    </div>
-                </div>
+    
+    <div class="section-content">
+        <div class="forecast-main-container">
+            <!-- This part stays at the top -->
+            <div id="forecast-header-sticky"></div>
+            
+            <!-- This part scrolls -->
+            <div id="forecast-list-scrollable">
+                <div style="text-align:center; padding:20px; color:#888;">Loading...</div>
             </div>
+        </div>
+
+        <div style="margin-top: 8px; text-align: center; font-size: 0.7em; color: #666; font-style: italic;">
+            Using data of Narakia et Vicky Zweistein
+        </div>
+    </div>
+</div>
 
             <!-- NEW SIDEBAR FOOTER FOR BMC -->
             <div class="sidebar-footer">

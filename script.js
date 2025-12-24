@@ -2210,8 +2210,6 @@ function getFormattedDate(dateObj) {
 // --- Main Render Function ---
 function renderForecastUI() {
   const displayDate = getFormattedDate(currentForecastDate);
-
-  // Check if it is today
   const nowParis = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" })
   );
@@ -2220,70 +2218,80 @@ function renderForecastUI() {
     currentForecastDate.getMonth() === nowParis.getMonth() &&
     currentForecastDate.getFullYear() === nowParis.getFullYear();
 
-  // 1. Update Header (Date + Toggle Button)
-  const navContainer = document.querySelector(".forecast-nav");
-  if (navContainer) {
-    // Clear existing to prevent duplicate buttons if re-rendering
-    navContainer.innerHTML = `
-            <button id="fc-prev" style="background:#444; border:none; color:white; cursor:pointer; width:30px; height:30px; border-radius:4px;">&lt;</button>
-            <span id="fc-date-display" style="font-weight: bold; color: var(--accent); flex-grow:1; text-align:center;">
-                ${isToday ? `TODAY (${displayDate})` : displayDate}
-            </span>
-            <button id="fc-next" style="background:#444; border:none; color:white; cursor:pointer; width:30px; height:30px; border-radius:4px;">&gt;</button>
-            <button class="forecast-view-btn" onclick="toggleForecastViewMode()" title="Switch View">
+  const headerContainer = document.getElementById("forecast-header-sticky");
+  const listContainer = document.getElementById("forecast-list-scrollable");
+
+  if (!headerContainer || !listContainer) return;
+
+  // 1. Render the Header (Sticky Part)
+  headerContainer.innerHTML = `
+        <div class="forecast-nav">
+            <button onclick="changeForecastDay(-1)">&lt;</button>
+            <span id="fc-date-display">${
+              isToday ? `TODAY (${displayDate})` : displayDate
+            }</span>
+            <button onclick="changeForecastDay(1)">&gt;</button>
+            <button class="forecast-view-btn" onclick="toggleForecastViewMode()">
                 ${forecastViewMode === "tab" ? "⊞" : "☰"}
             </button>
-        `;
-    // Re-bind nav buttons
-    document.getElementById("fc-prev").onclick = () => changeForecastDay(-1);
-    document.getElementById("fc-next").onclick = () => changeForecastDay(1);
-  }
+        </div>
+        ${
+          forecastViewMode === "tab"
+            ? `
+            <div class="forecast-tabs">
+                <div class="fc-tab ${
+                  activeDungeonTab === "classic" ? "active" : ""
+                }" onclick="setDungeonTab('classic')">
+                    🎯 GUILD HUNTERS
+                </div>
+                <div class="fc-tab ${
+                  activeDungeonTab === "modular" ? "active" : ""
+                }" onclick="setDungeonTab('modular')">
+                    ⚔️ MODULUX
+                </div>
+            </div>
+        `
+            : ""
+        }
+    `;
 
-  const contentEl = document.getElementById("forecast-content");
-
-  // 2. Fetch Data
+  // 2. Render the List (Scrollable Part)
   const dungeons =
     typeof FORECAST_DB !== "undefined" ? FORECAST_DB[displayDate] : null;
-
   if (!dungeons || dungeons.length === 0) {
-    if (contentEl)
-      contentEl.innerHTML =
-        '<div style="text-align:center; padding:20px; color:#666;">No data for this date.</div>';
+    listContainer.innerHTML =
+      '<div style="text-align:center; padding:20px; color:#666;">No data for this date.</div>';
     return;
   }
 
-  // 3. Process Data
   const classic = dungeons.filter((d) => d.type.startsWith("DJ"));
   const modular = dungeons.filter((d) => d.type.startsWith("Modulox"));
-
-  // Find Intersections
   const classicNames = new Set(classic.map((d) => d.name));
   const modularNames = new Set(modular.map((d) => d.name));
-  const intersectedNames = new Set(
+  const intersections = new Set(
     [...classicNames].filter((x) => modularNames.has(x))
   );
 
-  // 4. Render based on Mode
   if (forecastViewMode === "grid") {
-    renderGridView(contentEl, classic, modular, intersectedNames);
+    renderGridView(listContainer, classic, modular, intersections);
   } else {
-    renderTabView(contentEl, classic, modular, intersectedNames);
+    renderTabView(listContainer, classic, modular, intersections);
   }
 }
 
-// --- View: Grid (Side-by-Side) ---
+// Full Grid View function
 function renderGridView(container, classicList, modularList, intersections) {
   let html = `<div class="forecast-grid">`;
   html += renderGridColumn(
     classicList,
-    "CLASSIC",
+    "GUILD",
     "🎯",
     "type-classic",
     intersections
   );
   html += renderGridColumn(
     modularList,
-    "MODULAR",
+    "MODULUX",
     "⚔️",
     "type-modular",
     intersections
@@ -2323,36 +2331,21 @@ function renderGridColumn(list, title, emoji, typeClass, intersections) {
   return colHtml;
 }
 
+// Full Tab View function
 function renderTabView(container, classicList, modularList, intersections) {
-  // 1. Render Tabs
-  let html = `
-    <div class="forecast-tabs">
-        <div class="fc-tab ${
-          activeDungeonTab === "classic" ? "active" : ""
-        }" onclick="setDungeonTab('classic')">
-            🎯 Guild Hunters
-        </div>
-        <div class="fc-tab ${
-          activeDungeonTab === "modular" ? "active" : ""
-        }" onclick="setDungeonTab('modular')">
-            ⚔️ Modulux
-        </div>
-    </div>
-    <div class="forecast-list-container">`;
-
-  // 2. Determine which list to show
   const targetList = activeDungeonTab === "classic" ? classicList : modularList;
   const typeClass =
     activeDungeonTab === "classic" ? "type-classic" : "type-modular";
 
+  let html = `<div class="forecast-list-container">`;
   if (targetList.length === 0) {
-    html += `<div style="padding:20px; text-align:center; color:#666;">No dungeons found.</div>`;
+    html += `<div style="padding:20px; text-align:center; color:#888; font-style:italic;">No dungeons found for this category.</div>`;
   } else {
     targetList.forEach((d) => {
       const { badgeColor, typeLabel } = getDungeonStyles(d.type);
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-      // Get Location
+      // Location Lookup
       const location =
         typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
           ? DUNGEON_LOCATIONS[d.name]
@@ -2365,7 +2358,6 @@ function renderTabView(container, classicList, modularList, intersections) {
             </div>`;
     });
   }
-
   html += `</div>`;
   container.innerHTML = html;
 }
