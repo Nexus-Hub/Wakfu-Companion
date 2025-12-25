@@ -1,62 +1,57 @@
 # Nexus Wakfu Companion
-Live Tool: [https://wakfu-companion-production.up.railway.app/](https://wakfu-companion-production.up.railway.app/)
 
-**Nexus Wakfu Companion** is a lightweight, browser-based tool for *Wakfu* with PiP available to act as a Overlay. It parses the game's `wakfu-chat.log` file in real-time to provide combat statistics, item tracking, chat translation, and utility information without requiring external software installation.
+**Live Tool:** [https://wakfu-companion-production.up.railway.app/](https://wakfu-companion-production.up.railway.app/)
 
-## Key Features
+**Nexus Wakfu Companion** is a lightweight, browser-based utility for _Wakfu_ players. It parses the game's `wakfu-chat.log` file in real-time using the **File System Access API**, providing an interactive overlay for combat statistics, farming progress, and multilingual chat translation without requiring any local installation or game client modification.
 
-### ⚔️ Combat Meter
-A fully responsive damage, healing, and armor meter that updates instantly.
-*   **Multi-Language Support:** Automatically parses logs in English, French, Spanish, and Portuguese.
-*   **Three Modes:** Toggle between **Damage**, **Healing**, and **Armor** statistics.
-*   **Detailed Breakdown:** Click on any entity to view specific spell usage and elemental contributions.
-*   **Accurate Attribution:** Correctly handles indirect damage sources like Rogue Bombs.
-*   **Class Detection:** Automatically identifies player classes based on the spells they cast.
-*   **Auto-Reset:** Configurable "Watchdog" timer to automatically reset data after a combat encounter ends.
+## ⚔️ Key Features
 
-### ⛏️ Item Tracker
-Keep track of resource gathering goals overlaid directly on your screen.
-*   **Profession Database:** Includes a built-in database for Miner, Lumberjack, Herbalist, Farmer, Fisherman, and Trapper items.
-*   **Goal Setting:** Set target quantities for specific items. The tool tracks your progress via "You have picked up..." log entries.
-*   **Visual Notifications:** Pop-up toasts appear when tracked items are looted.
-*   **Persistence:** Tracked items are saved to your browser's local storage.
-*   **Drag & Drop:** Reorder your tracking list easily.
+### Advanced Combat Meter
 
-### 💬 Chat & Translator
-An enhanced chat interface designed for international servers.
-*   **Channel Filtering:** Filter chat by Vicinity, Group, Guild, Recruitment, Trade, and Community.
-*   **Auto-Translation:** Integrated Google Translate support to automatically translate incoming messages from specific languages (PT, FR, ES) to English.
-*   **Manual Translation:** One-click button to translate specific messages.
-*   **Language Toggles:** Quickly enable or disable translation for specific languages.
+- **Real-Time Stats:** Track Damage, Healing, and Armor across all entities in the fight.
+- **Automatic Team Detection:** Intelligently splits "Allies" and "Enemies" using a massive multi-language monster database.
+- **Class & Boss Detection:** Automatically identifies player classes and monster types to assign correct high-quality icons.
+- **Signature Rerouting:** Correctly attributes indirect damage procs (like Iop's _Lost_ state or Sadida's _Tetatoxin_) to the rightful caster even when logs are delayed.
+- **Master/Summon Binding:** Supports manual and automatic binding (e.g., Osamodas summons, Rogue bombs) via Drag & Drop.
+- **Toggle to enable Auto-Reset:** The meter stays on screen after a fight ends for review and automatically clears itself only when the **next** battle begins.
 
-### 📜 Utilities & Info Sidebar
-Quick access to daily routines and game data.
-*   **Daily Timer:** A countdown timer synced to the Europe/Paris timezone (Server time) for daily resets.
-*   **Mission Routes:** Optimized travel routes for Daily Missions (Full and Short variations).
-*   **Relic Database:** A reference table for Relic fragment locations and token costs.
-*   **Daily Dungeon:** Daily dungeons from the Guild Hunters and the Mod'Ule NPC, using data from Vicky Ƶweistein!
+### Unified Item Tracker
 
-## How to Use
+- **Global Search:** A single search interface covering all 6 gathering professions (Miner, Lumberjack, Herbalist, Farmer, Fisherman, Trapper) plus a massive database of monster drops.
+- **Visual Tracking:** Set target goals and watch progress update live as you loot items.
+- **Toast Notifications:** Real-time UI alerts when items are picked up.
+- **10,000+ Local Icons:** Full visual support for almost every item in the game world.
 
-1.  **Launch:** Open `index.html` in a modern web browser (Chrome, Edge, or Opera recommended for File System API support).
-2.  **Locate Log:** Find your Wakfu log folder (usually `%AppData%/Local/Ankama/Wakfu/game/logs`).
-3.  **Connect the file one time only:** Drag and drop the `wakfu-chat.log` file into the "Setup Panel" on the screen for the first run. Next time you open the website, click on Reconnect.
-4.  **Overlay:** The tool will now read the file in real-time. You can keep this window open on a second monitor or overlay it on your game.
+### Chat & Translator
 
-## Privacy & Security
+- **Multilingual Support:** Auto-translates messages from Portuguese (PT), French (FR), and Spanish (ES) to English using Google Translate integration.
+- **Channel Filtering:** Focus on specific channels like Guild, Group, Trade, or Recruitment.
+- **Manual Translation:** One-click "T" button to translate any specific line on demand.
 
-*   **Local Processing:** This tool runs entirely in your browser using client-side JavaScript.
-*   **No Data Uploads:** Your log files are processed locally on your machine. No game data is ever sent to an external server.
-*   **Translation:** Chat messages selected for translation are sent to the Google Translate API.
+### Quick Info Sidebar
 
-## Browser Compatibility
+- **Dungeon Forecast:** Real-time calendar for "Guild of Hunters" and "Mod'Ule" daily dungeons, synced to the **Europe/Paris (Server Time)** reset.
+- **Daily Reset Timer:** Live countdown to the next server daily reset.
+- **Optimized Routes:** Pre-planned travel routes for Full and Short daily quest runs.
 
-This tool utilizes the **File System Access API** to read the log file in real-time without needing to re-upload it.
-*   **Supported:** Google Chrome, Microsoft Edge, Opera.
-*   **Limited/Not Supported:** Firefox (may require manual file re-selection or configuration).
+## 🚀 How to Use
 
-## Tech Stack
+1.  **Open:** Use a modern browser (Chrome, Edge, or Opera) to access the tool.
+2.  **Locate Log:** Find your Wakfu log folder (usually `%AppData%\zaap\gamesLogs\wakfu\logs\`).
+3.  **Connect:** Drag and drop `wakfu-chat.log` onto the setup panel.
+4.  **Overlay:** Use the **Picture-in-Picture (PiP)** buttons on each panel to pop them out as "Always on Top" windows over your game.
 
-*   **HTML5 / CSS3:** Custom dark-mode UI with "Wakfu-like" styling.
-*   **JavaScript (Vanilla):** No frameworks or heavy libraries used.
-*   **Local Storage:** Used for saving preferences and item tracker data.
+## 🛠️ Tech Stack & Privacy
+
+- **Privacy First:** All log parsing happens **locally** in your browser. No game data or log contents are ever uploaded to a server.
+- **Vanilla JS/HTML/CSS:** No heavy frameworks; designed for maximum performance and low CPU usage while gaming.
+- **Persistence:** Your tracked items and preferences are saved to your browser's local storage.
+
+## 🤝 Credits
+
+- **Dungeon Forecast Data:** Sourced from Narakia and Vicky Ƶweistein.
+- **Monster & Item Assets:** Compiled from official Wakfu community resources.
+
+---
+
+**Disclaimer:** Nexus Wakfu Companion is a fan-made project and is not affiliated with Ankama Games. It complies with fair-play standards as it only reads local log files and does not inject code into the game client.

@@ -2116,18 +2116,20 @@ body.pip-window .empty-state {
   z-index: 100; /* Brings the hovered slot AND its tooltip to the front */
 }
 
-/* --- Grid Delete Button (Small Red X) --- */
+/* --- Grid Delete Button (Small Squared X) --- */
 .slot-delete-btn {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 18px;
-  height: 18px;
-  background: #ff4d4d;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 8px;
+  background: rgba(231, 76, 60, 0.9); /* Flat Red */
   color: white;
   border: none;
-  border-radius: 50%;
-  font-size: 12px;
+  /* Matches container's top-right radius (4px), rounds inner corner */
+  border-radius: 0 2px 0 4px;
+  font-size: 8px;
+  line-height: 1;
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -2135,8 +2137,7 @@ body.pip-window .empty-state {
   cursor: pointer;
   z-index: 10;
   opacity: 0; /* Hidden by default */
-  transition: opacity 0.2s, transform 0.1s;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.2s, background-color 0.2s;
 }
 
 .inventory-slot:hover .slot-delete-btn {
@@ -2144,8 +2145,8 @@ body.pip-window .empty-state {
 }
 
 .slot-delete-btn:hover {
-  background: #ff0000;
-  transform: scale(1.2);
+  background: #c0392b; /* Darker red on hover */
+  transform: scale(1.1);
 }
 
 /* --- Modal Improvements (Side-by-Side Inputs) --- */
@@ -2162,4 +2163,267 @@ body.pip-window .empty-state {
   border: 2px dashed var(--accent);
   background: rgba(0, 210, 255, 0.1);
   transform: scale(1.02);
+}
+
+/* --- Professions Left Sidebar --- */
+.left-sidebar {
+  left: -450px;
+  right: auto;
+  border-right: 1px solid #333;
+  border-left: none;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+  transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Reusing .sidebar class properties from script.js, we overwrite .open for left side */
+.left-sidebar.open {
+  left: 0;
+  right: auto;
+}
+
+/* Profession UI Specifics */
+.prof-header-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 15px;
+}
+
+.selected-job-icon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  /* Turns black PNGs to white for dark theme contrast */
+  filter: brightness(0) invert(1);
+  display: none;
+}
+
+.prof-select {
+  flex-grow: 1;
+  width: auto;
+  padding: 10px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.prof-select-group {
+  padding-bottom: 15px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 15px;
+}
+
+.prof-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.prof-levels {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.prof-level-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.prof-level-label {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.prof-level-input {
+  background-color: #222;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 8px;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: bold;
+  font-family: monospace;
+}
+
+.prof-calc-btn {
+  background-color: var(--accent);
+  color: #000;
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.2s;
+}
+.prof-calc-btn:hover {
+  background-color: #fff;
+}
+
+/* --- Recipe Card UI (Dark Theme) --- */
+.prof-recipe-card {
+  background-color: #1e1e1e; /* Match panel background */
+  border-radius: 5px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid #444;
+}
+
+/* Card Header */
+.recipe-card-header {
+  background-color: #252525; /* Slightly lighter dark */
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #333;
+  position: relative;
+}
+
+.recipe-card-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+.recipe-card-meta {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.3;
+}
+
+.recipe-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent); /* Cyan Title */
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.recipe-details {
+  font-size: 0.75rem;
+  color: #888;
+  font-family: monospace;
+}
+
+/* Switch Button Styling */
+.switch-recipe-btn {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.switch-recipe-btn:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  transform: rotate(180deg);
+}
+
+/* Ingredients List */
+.recipe-card-ingredients {
+  background-color: #1a1a1a; /* Very dark background for list */
+  padding: 0;
+}
+
+.ing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #333;
+  color: #ddd; /* Light Text */
+}
+
+.ing-row:last-child {
+  border-bottom: none;
+}
+
+.ing-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ing-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.ing-multiplier {
+  color: #666;
+  font-size: 0.85em;
+  margin-left: 5px;
+}
+
+.ing-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.ing-total {
+  font-family: monospace;
+  font-weight: bold;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.prof-add-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  background-color: #333;
+  border: 1px solid #555;
+  color: #aaa;
+  font-size: 1.2rem;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  padding-bottom: 3px;
+}
+
+.prof-add-btn:hover {
+  background-color: var(--btn-active-green);
+  color: #fff;
+  border-color: var(--btn-active-green);
+  box-shadow: 0 0 5px rgba(46, 204, 113, 0.4);
+}
+
+.prof-results {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Increased from 15px to 20px for separation between cards */
+  margin-top: 25px; /* Increased from 15px to 25px for spacing from the Calculate button */
 }

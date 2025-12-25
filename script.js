@@ -12,6 +12,8 @@ let combatLineCache = new Set();
 let logLineCache = new Set();
 let allKnownSpells = new Set();
 const MAX_CACHE_SIZE = 200;
+let trackerDirty = false;
+const MAX_CHAT_HISTORY = 200; // Limit chat DOM nodes to save memory
 
 // Global function to handle the toggle and save state
 window.toggleIconVariant = function (playerName, imgEl) {
@@ -646,6 +648,65 @@ function removeTrackedItem(id) {
   renderTracker();
 }
 
+const PROFESSION_SORT_ORDER = {
+  Armorer: 1,
+  Jeweler: 2,
+  Baker: 3,
+  Chef: 4,
+  Handyman: 5,
+  "Weapon Master": 6,
+  "Leather Dealer": 7,
+  Tailor: 8,
+};
+
+let sortDirection = 1; // 1 = Ascending, -1 = Descending
+
+function sortTrackerItems() {
+  if (!trackedItems || trackedItems.length === 0) return;
+
+  // Toggle direction on each click
+  sortDirection *= -1;
+
+  // Update Button Text
+  const btn = document.querySelector(
+    ".panel-header button[title='Sort by Profession']"
+  );
+  if (btn) btn.textContent = sortDirection === 1 ? "AZ ↓" : "ZA ↑";
+
+  trackedItems.sort((a, b) => {
+    const profA = a.profession || "Z_Other";
+    const profB = b.profession || "Z_Other";
+
+    // 1. Sort by Custom Priority
+    const prioA = PROFESSION_SORT_ORDER[profA] || 100;
+    const prioB = PROFESSION_SORT_ORDER[profB] || 100;
+
+    if (prioA !== prioB) {
+      return (prioA - prioB) * sortDirection;
+    }
+
+    // 2. Secondary Sort: Profession Name (for non-priority jobs like Miner/Farmer)
+    const profCompare = profA.localeCompare(profB);
+    if (profCompare !== 0) return profCompare * sortDirection;
+
+    // 3. Tertiary Sort: Item Level (INVERTED: High to Low)
+    if (a.level !== b.level) {
+      return (b.level - a.level) * sortDirection;
+    }
+
+    // 4. Quaternary Sort: Item Name (Alphabetical)
+    return a.name.localeCompare(b.name);
+  });
+
+  // Persist the new order and re-render
+  saveTrackerState();
+  renderTracker();
+}
+
+// ==========================================
+// TRACKER RENDER LOGIC
+// ==========================================
+
 function renderTracker() {
   const listEl = getUI("tracker-list");
   if (!listEl) return;
@@ -665,17 +726,18 @@ function renderTracker() {
     const isComplete = item.current >= item.target && item.target > 0;
     const progress = Math.min((item.current / (item.target || 1)) * 100, 100);
 
-    // 1. TOP-LEFT CORNER ICON
+    // 1. TOP-LEFT CORNER ICON (Profession)
+    // Handle cases where profession might be missing or "ALL"
+    const profNameRaw = item.profession || "z_other";
     const profFilename =
-      item.profession === "ALL"
+      profNameRaw === "ALL"
         ? "monster_resource"
-        : item.profession.toLowerCase().replace(/\s+/g, "_");
+        : profNameRaw.toLowerCase().replace(/\s+/g, "_");
     const profIconPath = `img/resources/${profFilename}.png`;
 
-    // 2. MAIN ITEM ICON: RESTORED TO LOCAL FOLDER img/items/
+    // 2. MAIN ITEM ICON
     let itemIconPath;
     if (item.profession === "ALL" && item.imgId) {
-      // Now loading from your repository's local folder
       itemIconPath = `img/items/${item.imgId}.png`;
     } else {
       const safeItemName = item.name.replace(/\s+/g, "_");
@@ -683,11 +745,14 @@ function renderTracker() {
     }
 
     const rarityName = (item.rarity || "common").toLowerCase();
+
+    // 3. BUILD TOOLTIP TEXT
+    const usageInfo = getItemUsage(item.name);
     const tooltipText = `${
       item.name
     }\nProgress: ${item.current.toLocaleString()} / ${item.target.toLocaleString()} (${Math.floor(
       progress
-    )}%)`;
+    )}%)${usageInfo}`;
 
     if (isGrid) {
       const slot = document.createElement("div");
@@ -704,10 +769,15 @@ function renderTracker() {
       slot.addEventListener("dragover", handleTrackDragOver);
       slot.addEventListener("drop", handleTrackDrop);
 
+      /* Add Delete Button (Hidden until hover via CSS) */
+      /* FIX: Added onerror handlers */
       slot.innerHTML = `
+                <button class="slot-delete-btn" onclick="event.stopPropagation(); removeTrackedItem(${
+                  item.id
+                })">×</button>
                 <img src="${profIconPath}" class="slot-prof-icon" onerror="this.style.display='none'">
                 <img src="${itemIconPath}" class="slot-icon" 
-                     onerror="this.src='img/resources/not_found.png';">
+                     onerror="this.onerror=null; this.src='img/resources/not_found.png';">
                 <div class="slot-count">${item.current.toLocaleString()}</div>
                 <div class="slot-progress-container">
                     <div class="slot-progress-bar" style="width: ${progress}%"></div>
@@ -724,12 +794,13 @@ function renderTracker() {
       row.addEventListener("dragover", handleTrackDragOver);
       row.addEventListener("drop", handleTrackDrop);
 
+      /* FIX: Added onerror handlers */
       row.innerHTML = `
                 <div class="t-left-group" style="cursor: pointer;" onclick="openTrackerModal(${
                   item.id
                 })">
                     <img src="${itemIconPath}" class="resource-icon" 
-                         onerror="this.src='img/resources/not_found.png';">
+                         onerror="this.onerror=null; this.src='img/resources/not_found.png';">
                     <div class="t-info-text">
                         <img src="img/quality/${rarityName}.png" class="rarity-icon" onerror="this.style.display='none'">
                         <span class="t-level-badge">Lvl. ${item.level}</span>
@@ -856,24 +927,58 @@ function processItemLog(line) {
   }
 }
 
-function showTrackerNotification(qty, itemName) {
-  let container = document.getElementById("tracker-notifications");
-
-  // Safety: Create the container if it doesn't exist in the HTML
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "tracker-notifications";
-    document.body.appendChild(container);
+function showTrackerNotification(qty, itemName, type = "pickup") {
+  // Define where to show notifications: Main Window + PiP Window (if open)
+  const targets = [document];
+  if (pipWindow && pipWindow.document) {
+    targets.push(pipWindow.document);
   }
 
-  const toast = document.createElement("div");
-  toast.className = "tracker-toast";
-  toast.textContent = `Picked up ${qty}x ${itemName}`;
-  container.appendChild(toast);
+  // Loop through all active windows and spawn the toast
+  targets.forEach((doc) => {
+    let container = doc.getElementById("tracker-notifications");
 
-  setTimeout(() => {
-    if (toast.parentNode) toast.parentNode.removeChild(toast);
-  }, 3000);
+    // Safety: Create the container if it doesn't exist in this document
+    if (!container) {
+      container = doc.createElement("div");
+      container.id = "tracker-notifications";
+      doc.body.appendChild(container);
+    }
+
+    const toast = doc.createElement("div");
+    toast.className = "tracker-toast";
+
+    // Handle legacy boolean calls (true = completion, false = pickup)
+    if (type === true) type = "completion";
+    if (type === false) type = "pickup";
+
+    if (type === "completion") {
+      // GOAL REACHED STYLE
+      toast.innerHTML = `<strong>★ GOAL REACHED:</strong> ${itemName}`;
+      toast.style.borderColor = "#2ecc71"; // Green
+      toast.style.color = "#2ecc71";
+      toast.style.boxShadow = "0 0 10px rgba(46, 204, 113, 0.4)";
+      toast.style.fontSize = "0.95rem";
+    } else if (type === "custom") {
+      // CUSTOM MESSAGE STYLE (For Professions Calc, etc)
+      toast.textContent = itemName; // itemName holds the full message
+      toast.style.borderColor = "var(--accent)"; // Blue/Cyan
+      toast.style.color = "#fff";
+    } else {
+      // STANDARD PICKUP STYLE
+      toast.textContent = `Picked up ${qty}x ${itemName}`;
+    }
+
+    container.appendChild(toast);
+
+    // Lasts longer if it's a completion message
+    setTimeout(
+      () => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      },
+      type === "completion" ? 5000 : 3000
+    );
+  });
 }
 
 // ==========================================
@@ -955,9 +1060,20 @@ async function parseFile() {
       const blob = file.slice(fileOffset, file.size);
       const text = await blob.text();
       const lines = text.split(/\r?\n/);
+
+      // Process all lines first
       lines.forEach(processLine);
+
       fileOffset = file.size;
+
+      // BATCH UPDATE: Render UI only ONCE after processing the chunk
       renderMeter();
+
+      if (trackerDirty) {
+        saveTrackerState();
+        renderTracker();
+        trackerDirty = false; // Reset flag
+      }
     }
   } catch (err) {
     console.error(err);
@@ -1030,13 +1146,11 @@ function processLine(line) {
 }
 
 function processItemLog(line) {
-  // Regex looks for digits followed by 'x', then grabs everything until the trailing period or end of string.
-  // Works for: "picked up 92x Taroudium Ore . " or "obtenido 2x Trigo ."
-  const match = line.match(/(\d+)x\s+([^.]+)/i);
+  // Regex: Matches "picked up 92x Item Name" handling trailing dots/spaces
+  const match = line.match(/picked up (\d+)x\s+([^.]+)/i);
 
   if (match) {
     const qty = parseInt(match[1], 10);
-    // Normalize string: Handle hidden non-breaking spaces (\u00A0) and trim leading/trailing whitespace
     const cleanLogName = match[2]
       .replace(/\u00A0/g, " ")
       .trim()
@@ -1044,17 +1158,48 @@ function processItemLog(line) {
 
     let updated = false;
     trackedItems.forEach((item) => {
-      // Comparison between cleaned database name and cleaned log name
       if (item.name.toLowerCase().trim() === cleanLogName) {
+        // 1. Check status BEFORE adding
+        const wasComplete = item.current >= item.target;
+
         item.current += qty;
         updated = true;
-        showTrackerNotification(qty, item.name);
+
+        const iconPath =
+          item.profession === "ALL" && item.imgId
+            ? `img/items/${item.imgId}.png`
+            : `img/resources/${item.name.replace(/\s+/g, "_")}.png`;
+
+        // 2. Windows Notification (Optional)
+        if (typeof sendWindowsNotification === "function") {
+          sendWindowsNotification(
+            "Item Collected",
+            `+${qty} ${item.name} (${item.current}/${item.target})`,
+            iconPath
+          );
+        }
+
+        // 3. Standard UI Toast
+        showTrackerNotification(qty, item.name, false);
+
+        // 4. Goal Reached Logic
+        if (!wasComplete && item.current >= item.target) {
+          setTimeout(() => {
+            showTrackerNotification(null, item.name, true);
+          }, 200);
+
+          const goalSound = new Audio(
+            "https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"
+          );
+          goalSound.volume = 0.05;
+          goalSound.play().catch((e) => {});
+        }
       }
     });
 
     if (updated) {
-      saveTrackerState();
-      renderTracker();
+      // OPTIMIZATION: Do not render here. Just set the flag.
+      trackerDirty = true;
     }
   }
 }
@@ -1124,7 +1269,59 @@ function isPlayerAlly(p) {
   return true;
 }
 
-// Helper at the top of your script or inside processFightLog
+// ==========================================
+// ITEM USAGE LOOKUP
+// ==========================================
+function getItemUsage(itemName) {
+  if (typeof PROFESSIONS_DATA === "undefined") return "";
+
+  const usedIn = new Set();
+  const targetName = itemName.toLowerCase().trim();
+
+  // Iterate over all professions in the database
+  for (const [profName, profData] of Object.entries(PROFESSIONS_DATA)) {
+    if (!profData.ranges) continue;
+
+    // Iterate over level ranges
+    for (const range of profData.ranges) {
+      let found = false;
+
+      // Check standard ingredients list
+      if (range.ingredients) {
+        if (
+          range.ingredients.some((ing) => ing.name.toLowerCase() === targetName)
+        ) {
+          found = true;
+        }
+      }
+
+      // Check recipe variants (array of arrays)
+      if (!found && range.recipes) {
+        for (const recipe of range.recipes) {
+          if (recipe.some((ing) => ing.name.toLowerCase() === targetName)) {
+            found = true;
+            break;
+          }
+        }
+      }
+
+      // If found in this profession, add to Set and stop checking this profession
+      if (found) {
+        usedIn.add(profName);
+        break;
+      }
+    }
+  }
+
+  if (usedIn.size > 0) {
+    // Return formatted string for tooltip
+    const sortedProfs = Array.from(usedIn).sort().join(", ");
+    return `\nUsed in: ${sortedProfs}`;
+  }
+  return "";
+}
+
+// Helper for elements normalization
 const elementMap = {
   aire: "Air",
   ar: "Air",
@@ -1940,6 +2137,11 @@ function addChatMessage(time, channel, author, message) {
   const emptyState = chatList.querySelector(".empty-state");
   if (emptyState) chatList.innerHTML = "";
 
+  // MEMORY FIX: Prune old messages if we exceed the limit
+  while (chatList.children.length >= MAX_CHAT_HISTORY) {
+    chatList.removeChild(chatList.firstChild);
+  }
+
   const div = document.createElement("div");
   div.className = "chat-msg";
 
@@ -1950,6 +2152,7 @@ function addChatMessage(time, channel, author, message) {
   // 2. Get Color based on that Category
   const color = getChannelColor(category);
 
+  // Optimization: Don't set style.display if default is block, handles CSS better
   if (
     currentChatFilter !== "all" &&
     category !== "vicinity" &&
@@ -1963,6 +2166,7 @@ function addChatMessage(time, channel, author, message) {
     "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
+  // Use more efficient template literal
   div.innerHTML = `
         <div class="chat-meta">
             <span class="chat-time">${time}</span>
@@ -1978,9 +2182,12 @@ function addChatMessage(time, channel, author, message) {
     `;
 
   chatList.appendChild(div);
+
+  // Optimization: Only scroll if user is near bottom to prevent jitter
+  // But for simple log tailing, scrolling every time is acceptable if DOM is small
   chatList.scrollTop = chatList.scrollHeight;
 
-  // Translation logic
+  // Translation logic...
   if (transConfig.enabled) {
     if (channel.includes("(PT)") && !transConfig.pt) return;
     if (channel.includes("(FR)") && !transConfig.fr) return;

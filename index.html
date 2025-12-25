@@ -127,8 +127,11 @@
                     <img src="./img/headers/item_tracker.png" class="header-label-icon" onerror="this.style.display='none'">
                     <span class="header-label">Item Tracker</span>
 
-                    <!-- View Toggle Button -->
-                    <button class="pip-btn" id="tracker-view-toggle" onclick="toggleTrackerView()" title="Toggle Grid/List View" style="margin-left: auto;">☰</button>
+                    <!-- Sort Button -->
+                    <button class="pip-btn" onclick="sortTrackerItems()" title="Sort by Profession" style="margin-left: auto; margin-right: 5px; font-size: 0.8rem; font-weight: bold;">AZ</button>
+
+                    <!-- View Toggle Button (Modified margins) -->
+                    <button class="pip-btn" id="tracker-view-toggle" onclick="toggleTrackerView()" title="Toggle Grid/List View" style="margin-right: 5px;">☰</button>
 
                     <!-- PiP Button -->
                     <button class="pip-btn" onclick="togglePiP('tracker-list', 'Item Tracker')" title="Picture in Picture">⧉</button>
@@ -183,6 +186,53 @@
 
         </div>
     </div>
+
+    <!-- LEFT SIDEBAR FOR PROFESSIONS -->
+<div id="professions-sidebar" class="sidebar left-sidebar">
+<div class="sidebar-header">
+        <h3>Professions XP Calculator</h3>
+        <button class="close-sidebar-btn" onclick="toggleProfSidebar()">×</button>
+    </div>
+    
+    <div class="sidebar-content">
+             
+             <!-- Selector with Dynamic Icon -->
+             <div class="prof-select-group prof-header-group">
+                 <!-- Image loads blank, src filled by JS -->
+                 <img id="prof-logo-img" class="selected-job-icon" src="" alt="Job Icon">
+                 
+                 <select id="profession-select" class="prof-select" onchange="onProfessionChange()">
+                     <option value="" disabled selected>Select Profession...</option>
+                 </select>
+             </div>
+
+             <!-- Inputs -->
+             <div class="prof-levels">
+                 <div class="prof-level-input-group" style="flex:0.8;">
+                     <label class="prof-level-label">Base XP</label>
+                     <input type="number" id="prof-base-exp" class="prof-level-input" min="1">
+                 </div>
+                 <div class="prof-level-input-group">
+                     <label class="prof-level-label">Start</label>
+                     <input type="number" id="prof-current-lvl" class="prof-level-input" min="0" max="159" value="0">
+                 </div>
+                 <div class="prof-level-input-group">
+                     <label class="prof-level-label">Target</label>
+                     <input type="number" id="prof-target-lvl" class="prof-level-input" min="1" max="160" value="20">
+                 </div>
+             </div>
+
+             <!-- Calculate Button -->
+             <button class="prof-calc-btn" onclick="calculateProfessionResources()">Calculate Needs</button>
+
+             <!-- Results -->
+             <div id="profession-results-list" class="prof-results">
+                 <div class="empty-state" style="font-size: 0.9em; padding: 20px;">Select levels to see required resources.</div>
+             </div>
+
+        </div>
+
+</div>
 
     <!-- SIDEBAR FOR MISSIONS & RELICS -->
     <div id="info-sidebar" class="sidebar">
@@ -349,8 +399,8 @@
             <!-- Tracking Label -->
             <span style="color:var(--accent); font-weight:bold;">Tracking: </span> 
             <span id="active-filename" style="margin-left: 5px; color:#aaa;">No File</span>
-            
-            <!-- Separator -->
+
+                        <!-- Separator -->
             <span class="footer-separator">|</span>
 
             <!-- Daily Timer -->
@@ -362,7 +412,8 @@
             <!-- Separator -->
             <span class="footer-separator">|</span>
 
-            <!-- Sidebar Toggle at Footer) -->
+            <!-- Sidebar Toggles at Footer -->
+            <span class="footer-btn" onclick="toggleProfSidebar()" style="margin-right: 15px;">PROFESSIONS</span>
             <span class="footer-btn" onclick="toggleSidebar()">INFO & ROUTES</span>
         </div>
     </div>
@@ -399,6 +450,8 @@
     <script src="forecast_data.js"></script>
     <script src="items.js"></script>
     <script src="wakfu_monsters.js"></script>
+    <script src="professions_data.js"></script>
+    <script src="professions.js"></script>
     <script src="script.js"></script>
 
     <!-- BUY ME A COFFEE WIDGET -->
