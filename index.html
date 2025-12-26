@@ -14,7 +14,7 @@
         <!-- Setup (Overlay) -->
         <div id="setup-panel">
             <div class="drop-zone" id="drop-zone">
-                <h3>DRAG 'wakfu-chat.log' HERE</h3>
+                <h3>DRAG 'wakfu_chat.log' HERE</h3>
                 <p style="color:#aaa; margin-bottom:5px;">Default Path (Copy & Paste in File Explorer):</p>
                 
                 <!-- Path Container with Copy Button -->
@@ -70,7 +70,10 @@
                         <button class="toggle-btn" id="autoResetToggle">
                             <span id="autoResetText">Auto Reset</span>
                         </button>
-                        <div style="flex-grow: 1;"></div> 
+                        <div style="flex-grow: 1;"></div>
+                        <button class="export-btn" id="discordBtn" title="Copy Report for Discord" onclick="exportToDiscord()">
+                            📋
+                        </button>
                         <button class="reset-btn" id="resetBtn">RESET</button>
                     </div>
                 </div>
@@ -250,7 +253,6 @@
              </div>
 
         </div>
-
 </div>
 
     <!-- SIDEBAR FOR MISSIONS & RELICS -->
@@ -398,16 +400,13 @@
         </div>
     </div>
 </div>
-
             <!-- NEW SIDEBAR FOOTER FOR BMC -->
             <div class="sidebar-footer">
                 <a href="https://www.buymeacoffee.com/nexuswow" target="_blank">
                  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" class="bmc-sidebar-img">
                 </a>
             </div>
-
         </div>
-
 
     <!-- Footer for File Tracking Info -->
     <div id="app-footer">
@@ -427,7 +426,7 @@
             <!-- Sidebar Toggles at Footer -->
             <span class="footer-btn" onclick="toggleProfSidebar()">PROFESSIONS</span>
             <span class="footer-separator">|</span>
-            <span class="footer-btn" onclick="toggleSidebar()">INFO & ROUTES</span>
+            <span class="footer-btn" onclick="toggleSidebar()">QUICK INFO</span>
         </div>
     </div>
 

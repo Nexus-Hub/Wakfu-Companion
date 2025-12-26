@@ -3,8 +3,8 @@
   --panel-bg: #1e1e1e;
   --text-color: #e0e0e0;
   --accent: #00d2ff;
-  --heal-color: #e67e22; /* Swapped to Orange */
-  --armor-color: #2ecc71; /* Swapped to Green */
+  --heal-color: #e67e22;
+  --armor-color: #2ecc71;
   --border: #333;
   --trans-text: #00d2ff;
   --btn-active-green: #2ecc71;
@@ -918,6 +918,10 @@ button.reset-btn:hover {
   gap: 5px;
   flex-wrap: wrap;
   justify-content: center;
+}
+.game-log-number {
+  color: #ff4d4d; /* Bright Red/Salmon matching Wakfu logs */
+  font-weight: bold;
 }
 .filter-btn {
   background: #333;
@@ -2123,37 +2127,47 @@ body.pip-window .empty-state {
   z-index: 100; /* Brings the hovered slot AND its tooltip to the front */
 }
 
-/* --- Grid Delete Button (Small Squared X) --- */
+/* --- Grid Delete Button (Tiny Squared X) --- */
 .slot-delete-btn {
   position: absolute;
   top: 0;
   right: 0;
-  width: 4px;
-  height: 8px;
-  background: rgba(231, 76, 60, 0.9); /* Flat Red */
-  color: white;
+  width: 12px; /* Reduced to 12px */
+  height: 12px; /* Reduced to 12px */
+  background: rgba(231, 76, 60, 0.9);
+  color: #fff;
   border: none;
-  /* Matches container's top-right radius (4px), rounds inner corner */
-  border-radius: 0 2px 0 4px;
-  font-size: 8px;
-  line-height: 1;
-  font-weight: bold;
+  /* Tighter radius to match the smaller scale */
+  border-radius: 0 4px 0 4px;
+  font-size: 9px; /* Tiny font */
+  line-height: 1; /* Vertically centered */
+  font-weight: 700;
+  font-family: sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
-  opacity: 0; /* Hidden by default */
-  transition: opacity 0.2s, background-color 0.2s;
+  z-index: 20;
+  opacity: 0;
+  transform-origin: top right;
+  transition: all 0.15s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: -1px 1px 2px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(1px);
+  padding: 0 0 1px 1px; /* Optical center adjustment */
 }
 
 .inventory-slot:hover .slot-delete-btn {
-  opacity: 1; /* Show on hover */
+  opacity: 1;
 }
 
+/* Hover State - Expands slightly for clickability */
 .slot-delete-btn:hover {
-  background: #c0392b; /* Darker red on hover */
-  transform: scale(1.1);
+  background: #e74c3c;
+  width: 15px;
+  height: 15px;
+  border-bottom-left-radius: 6px;
+  box-shadow: -1px 1px 4px rgba(0, 0, 0, 0.4);
+  font-size: 11px;
 }
 
 /* --- Modal Improvements (Side-by-Side Inputs) --- */
@@ -2479,4 +2493,28 @@ body.pip-window .empty-state {
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 0 5px rgba(0, 210, 255, 0.2);
+}
+
+/* --- Export Button --- */
+.export-btn {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  font-size: 1.2rem;
+  padding: 0;
+  width: 30px;
+  height: 28px;
+  margin-right: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000; /* Black text on Cyan background for readability */
 }

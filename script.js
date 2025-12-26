@@ -14,7 +14,12 @@ let allKnownSpells = new Set();
 const MAX_CACHE_SIZE = 200;
 let trackerDirty = false;
 const MAX_CHAT_HISTORY = 200; // Limit chat DOM nodes to save memory
-let currentTrackerFilter = "SHOW_ALL";
+
+// 1. AUTO RESET DEFAULT (True unless user saved 'false')
+const storedReset = localStorage.getItem("wakfu_auto_reset");
+let isAutoResetOn = storedReset === null ? true : storedReset === "true";
+let currentTrackerFilter =
+  localStorage.getItem("wakfu_tracker_filter") || "SHOW_ALL";
 
 // Global function to handle the toggle and save state
 window.toggleIconVariant = function (playerName, imgEl) {
@@ -57,7 +62,6 @@ let activeMeterMode = "damage"; // 'damage', 'healing', 'armor'
 let currentCaster = "Unknown";
 let currentSpell = "Unknown Spell";
 let expandedPlayers = new Set();
-let isAutoResetOn = false;
 let lastCombatTime = Date.now();
 let resetDelayMs = 120000;
 
@@ -471,6 +475,10 @@ function initTrackerDropdowns() {
   }
 
   loadTrackerState();
+
+  // 3. RESTORE SAVED FILTER ON LOAD
+  // We call this last to apply the visual filter to the loaded items
+  setTrackerFilter(currentTrackerFilter);
 }
 
 function addTrackedItem() {
@@ -710,6 +718,9 @@ function sortTrackerItems() {
 
 function setTrackerFilter(filter) {
   currentTrackerFilter = filter;
+
+  // SAVE STATE
+  localStorage.setItem("wakfu_tracker_filter", filter);
 
   // Update UI State
   const buttons = document.querySelectorAll(
@@ -2207,7 +2218,22 @@ function addChatMessage(time, channel, author, message) {
     "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
-  // Use more efficient template literal
+  // --- NEW: Game Log Number Highlighting ---
+  let displayMessage = message;
+  // Check if channel contains "Log" (Game Log, Combat Log, etc.) or is Information
+  if (
+    channel.toLowerCase().includes("log") ||
+    channel.toLowerCase().includes("info")
+  ) {
+    // Regex matches: Optional +/- start, digits, optional comma/dot separators
+    displayMessage = message.replace(
+      /(?:\+|-)?\d+(?:[.,]\d+)*/g,
+      '<span class="game-log-number">$&</span>'
+    );
+  }
+  // -----------------------------------------
+
+  // Use efficient template literal
   div.innerHTML = `
         <div class="chat-meta">
             <span class="chat-time">${time}</span>
@@ -2218,14 +2244,12 @@ function addChatMessage(time, channel, author, message) {
               "\\'"
             )}', '${transId}', true)">T</button>
         </div>
-        <div class="chat-content">${message}</div>
+        <div class="chat-content">${displayMessage}</div>
         <div id="${transId}" class="translated-block" style="display:none;"></div>
     `;
 
   chatList.appendChild(div);
 
-  // Optimization: Only scroll if user is near bottom to prevent jitter
-  // But for simple log tailing, scrolling every time is acceptable if DOM is small
   chatList.scrollTop = chatList.scrollHeight;
 
   // Translation logic...
@@ -2324,6 +2348,9 @@ clearChatBtn.addEventListener("click", () => {
 // ==========================================
 autoResetBtn.addEventListener("click", () => {
   isAutoResetOn = !isAutoResetOn;
+  // SAVE STATE
+  localStorage.setItem("wakfu_auto_reset", isAutoResetOn);
+
   autoResetBtn.classList.toggle("active", isAutoResetOn);
   updateWatchdogUI();
 });
@@ -2804,7 +2831,105 @@ function closeTrackerModal() {
   document.getElementById("tracker-modal").style.display = "none";
 }
 
+// ==========================================
+// DISCORD EXPORT LOGIC
+// ==========================================
+function exportToDiscord() {
+  let dataSet;
+  let title;
+
+  // Determine what to export based on active tab
+  if (activeMeterMode === "damage") {
+    dataSet = fightData;
+    title = "DAMAGE REPORT";
+  } else if (activeMeterMode === "healing") {
+    dataSet = healData;
+    title = "HEALING REPORT";
+  } else {
+    dataSet = armorData;
+    title = "ARMOR REPORT";
+  }
+
+  const players = Object.values(dataSet);
+  if (players.length === 0) return alert("No data to export.");
+
+  // Separate Allies vs Enemies
+  const allies = [];
+  const enemies = [];
+  players.forEach((p) => {
+    if (isPlayerAlly(p)) allies.push(p);
+    else enemies.push(p);
+  });
+
+  // Sort High to Low
+  allies.sort((a, b) => b.total - a.total);
+  enemies.sort((a, b) => b.total - a.total);
+
+  // Calculate Totals
+  const totalAlly = allies.reduce((acc, p) => acc + p.total, 0);
+  const totalEnemy = enemies.reduce((acc, p) => acc + p.total, 0);
+
+  // Formatters
+  const formatNum = (num) => num.toLocaleString();
+  const getPercent = (val, total) =>
+    total > 0 ? Math.round((val / total) * 100) + "%" : "0%";
+
+  // Build String (Markdown Code Block for Discord)
+  let report = `\`\`\`ini\n[ ${title} ]\n`;
+  report += `Total: ${formatNum(totalAlly)} (Allies) vs ${formatNum(
+    totalEnemy
+  )} (Enemies)\n\n`;
+
+  if (allies.length > 0) {
+    report += `[ ALLIES ]\n`;
+    allies.forEach((p, i) => {
+      // Limit to top 15 to avoid hitting Discord char limits
+      if (i < 15) {
+        // Formatting: 1. Name..... : 1,200,000 (45%)
+        report += `${i + 1}. ${p.name.padEnd(15)} : ${formatNum(p.total).padEnd(
+          10
+        )} (${getPercent(p.total, totalAlly)})\n`;
+      }
+    });
+    if (allies.length > 15) report += `... (+${allies.length - 15} more)\n`;
+    report += `\n`;
+  }
+
+  if (enemies.length > 0) {
+    report += `[ ENEMIES ]\n`;
+    enemies.forEach((p, i) => {
+      if (i < 10) {
+        report += `${i + 1}. ${p.name.padEnd(15)} : ${formatNum(p.total).padEnd(
+          10
+        )}\n`;
+      }
+    });
+  }
+
+  report += `\`\`\``;
+
+  // Copy to Clipboard with Visual Feedback
+  navigator.clipboard
+    .writeText(report)
+    .then(() => {
+      const btn = document.getElementById("discordBtn");
+      const originalText = btn.textContent;
+      btn.textContent = "✅"; // Change icon to checkmark
+      btn.style.color = "#2ecc71"; // Green
+
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.color = ""; // Reset color
+      }, 1500);
+    })
+    .catch((err) => {
+      console.error("Export failed", err);
+      alert("Failed to copy to clipboard.");
+    });
+}
+
 // INITIALIZATION
 // Update timer every minute
 setInterval(updateDailyTimer, 60000);
 updateDailyTimer();
+updateWatchdogUI();
