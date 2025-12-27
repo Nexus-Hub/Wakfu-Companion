@@ -116,8 +116,22 @@ const itemInput = document.getElementById("item-input");
 const itemDatalist = document.getElementById("item-datalist");
 const trackerList = document.getElementById("tracker-list");
 let dragSrcIndex = null;
-
 let activeTooltip = null;
+
+// Helper to keep code clean
+const NOISE_WORDS = new Set([
+  "Block!",
+  "Critical",
+  "Critical Hit",
+  "Critical Hit Expert",
+  "Slow Influence",
+  "Backstab",
+  "Sidestab",
+  "Berserk",
+  "Influence",
+  "Dodge",
+  "Lock",
+]);
 
 function generateSpellMap() {
   if (typeof classSpells === "undefined") return;
@@ -125,8 +139,6 @@ function generateSpellMap() {
   allKnownSpells = new Set();
 
   for (const [className, langData] of Object.entries(classSpells)) {
-    // Only process keys that are actual class names (feca, iop, etc.)
-    // This provides a secondary safety layer
     if (typeof langData === "object" && !Array.isArray(langData)) {
       for (const spells of Object.values(langData)) {
         if (Array.isArray(spells)) {
@@ -138,6 +150,28 @@ function generateSpellMap() {
       }
     }
   }
+
+  // --- MANUAL INJECTIONS (Feedback Fixes) ---
+  // Forces these spells to be attributed to the Class, not the Summon/Doll
+
+  // SADIDA TOXINS & DOLL SPELLS
+  const sadidaSpells = [
+    "Harmless Toxin",
+    "Toxine inoffensive",
+    "Toxina inofensiva",
+    // Removed "Furtive" - it's a debuff, not a D/H/A source
+    "Tetatoxin",
+    "Tétatoxine", // Tetatoxin
+    "Venomous",
+    "Venimeux", // Venomous state
+    "Liquid Ghoul", // The Greedy spell
+  ];
+
+  sadidaSpells.forEach((s) => (spellToClassMap[s] = "sadida"));
+
+  // ECAFLIP
+  spellToClassMap["Blackjack"] = "ecaflip";
+
   console.log(
     `Class Database: ${Object.keys(classSpells).length} classes loaded.`
   );
@@ -1466,8 +1500,12 @@ function processFightLog(line) {
     awaitingNewFight = false;
   }
 
-  // 1. Turn/Time Carryover
+  // 1. Turn/Time Carryover - RESET CASTER
+  // "0 seconds carried over to the next turn" implies end of turn.
+  // We reset currentCaster so subsequent passive procs (like Boss self-heals)
+  // aren't attributed to the last player who acted.
   if (content.includes("carried over") || content.includes("tour suivant")) {
+    currentCaster = null;
     currentSpell = "Passive / Indirect";
     return;
   }
@@ -1501,45 +1539,35 @@ function processFightLog(line) {
 
     if (isNaN(amount) || amount <= 0) return;
 
-    // Summon Spawn Filter
-    const isSummon =
-      typeof allySummons !== "undefined" &&
-      allySummons.some((s) => target.toLowerCase().includes(s.toLowerCase()));
-    if (sign === "+" && isSummon && unit.match(new RegExp(hpUnits, "i")))
-      return;
-
-    // Extract suffixes: e.g., (Fire) (Defensive Orb Shield)
+    // Extract suffixes: e.g., (Fire) (Defensive Orb Shield) (Berserk Wakfu)
     const details = (suffix.match(/\(([^)]+)\)/g) || []).map((p) =>
       p.slice(1, -1)
     );
 
     let detectedElement = null;
     let spellOverride = null;
-    const noise = [
-      "Block!",
-      "Critical",
-      "Critical Hit",
-      "Critical Hit Expert",
-      "Slow Influence",
-    ];
 
     for (const d of details) {
       const norm = normalizeElement(d);
       if (norm) {
         detectedElement = norm;
-      } else if (!noise.includes(d)) {
-        // FIXED: Check if the detail contains a known spell name (e.g., "Defensive Orb Shield" contains "Defensive Orb")
-        if (
-          d.toLowerCase() === "lost" ||
-          d.includes("Potion") ||
-          d.includes("Prayer")
-        ) {
-          spellOverride = d;
+      } else if (!NOISE_WORDS.has(d)) {
+        // IMPROVED: If it's not an element and not noise, accept it as a spell name
+        // This catches things like "(Berserk Wakfu)" or "(Furtive)" even if not in DB.
+
+        // Check 1: Is it a known spell in DB? (High Confidence)
+        const knownMatch = Array.from(allKnownSpells).find(
+          (s) => d === s || d.includes(s)
+        );
+
+        if (knownMatch) {
+          spellOverride = knownMatch;
         } else {
-          const knownMatch = Array.from(allKnownSpells).find((s) =>
-            d.includes(s)
-          );
-          if (knownMatch) spellOverride = knownMatch;
+          // Check 2: Heuristic - if it's not "Lost" or "Potion", treat as spell
+          // This allows capturing new/unknown passives.
+          if (!d.toLowerCase().includes("lost") && !d.includes("Potion")) {
+            spellOverride = d;
+          }
         }
       }
     }
@@ -1547,36 +1575,54 @@ function processFightLog(line) {
     // ATTRIBUTION LOGIC
     let finalCaster = currentCaster;
 
-    // If it's a heal or armor and we don't have an active caster, attribute to target (self-proc)
+    // A. No active caster? Attribute to Target (Self-proc)
+    if (!currentCaster || currentCaster === "Unknown") {
+      finalCaster = target;
+    }
+
+    // B. Reflection / Self-Inflicted Mechanics
     if (
-      (sign === "+" || unit.match(new RegExp(armorUnits, "i"))) &&
-      (currentCaster === "Unknown" || !currentCaster)
+      ["Burning Armor", "Armadura Ardiente", "Reflect", "Thorns"].some(
+        (s) => spellOverride && spellOverride.includes(s)
+      )
     ) {
       finalCaster = target;
     }
 
+    // C. HEAL SAFEGUARD: Ally healing Enemy? -> Probably Boss Mechanic (Self Heal)
+    // Fixes "Elio healed Boss" issue
+    if (sign === "+") {
+      const casterIsAlly = finalCaster && isPlayerAlly({ name: finalCaster });
+      const targetIsAlly = isPlayerAlly({ name: target });
+
+      if (casterIsAlly && !targetIsAlly) {
+        // Player healing Monster? Assume Monster healed self via mechanic
+        finalCaster = target;
+        if (!spellOverride) spellOverride = "Mechanic / Passive";
+      }
+    }
+
     let finalSpell = spellOverride || currentSpell;
 
-    // SIGNATURE REROUTING (Forces spells like Tetatoxin or Defensive Orb to the right class)
-    if (finalSpell !== "Unknown Spell" && finalSpell !== "Passive / Indirect") {
+    // D. SIGNATURE REROUTING (Forces spells like Harmless Toxin to Sadida)
+    if (
+      finalSpell &&
+      finalSpell !== "Unknown Spell" &&
+      finalSpell !== "Passive / Indirect"
+    ) {
       finalCaster = getSignatureCaster(finalSpell, finalCaster);
     }
 
-    // Bind summons to masters
+    // E. Summon Binding
     if (summonBindings[finalCaster]) {
       const master = summonBindings[finalCaster];
       finalSpell = `${finalSpell} (${finalCaster})`;
       finalCaster = master;
     }
 
-    // Reflect logic
-    if (["Burning Armor", "Armadura Ardiente"].includes(spellOverride)) {
-      finalCaster = target;
-    }
-
     const isArmor = unit.match(new RegExp(armorUnits, "i"));
+
     if (isArmor) {
-      // FIXED: Attribute Armor to the CASTER (Feca), not the target.
       updateCombatData(armorData, finalCaster, finalSpell, amount, null);
     } else if (sign === "+") {
       updateCombatData(
