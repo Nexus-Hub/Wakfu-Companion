@@ -3497,6 +3497,7 @@ const wakfuEnemies = [
 // 5. DUNGEON LOCATIONS
 const DUNGEON_LOCATIONS = {
   "Incarnam Dungeon": "Incarnam",
+  "Octopus Crew Dungeon": "Ereboria → Pirate Beach",
   "Grandmeow's House": "Astrub",
   "Treechnid Dungeon": "Bonta",
   "Deathburn Dungeon": "Ereboria → Cursed Beach",

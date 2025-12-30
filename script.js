@@ -134,6 +134,21 @@ const NOISE_WORDS = new Set([
   "Increased Damage",
 ]);
 
+const UI_TRANSLATIONS = {
+  GUILD_HUNTERS: {
+    en: "GUILD HUNTERS",
+    es: "GREMIO DE CAZADORES",
+    fr: "GUILDE DES CHASSEURS",
+    pt: "GUILDA DOS CAÇADORES",
+  },
+  MODULUX: {
+    en: "MODULOX",
+    es: "MODULOX",
+    fr: "MODULOX",
+    pt: "MODULOX",
+  },
+};
+
 function generateSpellMap() {
   if (typeof classSpells === "undefined") return;
   spellToClassMap = {};
@@ -2648,25 +2663,15 @@ function toggleSidebarSection(id) {
 let currentForecastDate = new Date();
 let forecastViewMode = "tab"; // 'tab' or 'grid'
 let activeDungeonTab = "classic"; // 'classic' or 'modular'
+let currentForecastLang = localStorage.getItem("wakfu_forecast_lang") || "en";
 
 async function initForecast() {
-  // Set current date based on Paris time
   const parisString = new Date().toLocaleString("en-US", {
     timeZone: "Europe/Paris",
   });
   currentForecastDate = new Date(parisString);
-
   renderForecastUI();
-
-  // Bind Global Buttons (Previous/Next)
-  // We re-bind inside render usually, but static binds here are fine if elements exist
-  const btnPrev = document.getElementById("fc-prev");
-  const btnNext = document.getElementById("fc-next");
-  if (btnPrev) btnPrev.onclick = () => changeForecastDay(-1);
-  if (btnNext) btnNext.onclick = () => changeForecastDay(1);
 }
-
-// --- Navigation ---
 function changeForecastDay(days) {
   currentForecastDate.setDate(currentForecastDate.getDate() + days);
   renderForecastUI();
@@ -2682,12 +2687,28 @@ function setDungeonTab(tab) {
   renderForecastUI();
 }
 
-// --- Helpers ---
+function setForecastLanguage(lang) {
+  currentForecastLang = lang;
+  localStorage.setItem("wakfu_forecast_lang", lang);
+  renderForecastUI();
+}
+
 function getFormattedDate(dateObj) {
   const d = String(dateObj.getDate()).padStart(2, "0");
   const m = String(dateObj.getMonth() + 1).padStart(2, "0");
   const y = dateObj.getFullYear();
   return `${d}/${m}/${y}`;
+}
+
+// --- Helper: Get Translated Name ---
+function getDungeonName(originalName) {
+  if (typeof DUNGEON_TRANSLATIONS === "undefined") return originalName;
+
+  const entry = DUNGEON_TRANSLATIONS[originalName];
+  if (entry && entry[currentForecastLang]) {
+    return entry[currentForecastLang];
+  }
+  return originalName; // Fallback to English key
 }
 
 // --- Main Render Function ---
@@ -2703,10 +2724,16 @@ function renderForecastUI() {
 
   const headerContainer = document.getElementById("forecast-header-sticky");
   const listContainer = document.getElementById("forecast-list-scrollable");
+  const langContainer = document.getElementById("forecast-lang-selector"); // NEW CONTAINER
 
   if (!headerContainer || !listContainer) return;
 
-  // 1. Render the Header (Sticky Part)
+  // 1. Render Header (Nav + Tabs)
+  // Translate Tab Titles
+  const titleGuild =
+    UI_TRANSLATIONS["GUILD_HUNTERS"][currentForecastLang] || "GUILD HUNTERS";
+  const titleMod = UI_TRANSLATIONS["MODULUX"][currentForecastLang] || "MODULUX";
+
   headerContainer.innerHTML = `
         <div class="forecast-nav">
             <button onclick="changeForecastDay(-1)">&lt;</button>
@@ -2718,19 +2745,20 @@ function renderForecastUI() {
                 ${forecastViewMode === "tab" ? "⊞" : "☰"}
             </button>
         </div>
+        
         ${
           forecastViewMode === "tab"
             ? `
             <div class="forecast-tabs">
                 <div class="fc-tab ${
                   activeDungeonTab === "classic" ? "active" : ""
-                }" onclick="setDungeonTab('classic')">
-                    🎯 GUILD HUNTERS
+                }" onclick="setDungeonTab('classic')" title="${titleGuild}">
+                    🎯 ${titleGuild}
                 </div>
                 <div class="fc-tab ${
                   activeDungeonTab === "modular" ? "active" : ""
-                }" onclick="setDungeonTab('modular')">
-                    ⚔️ MODULUX
+                }" onclick="setDungeonTab('modular')" title="${titleMod}">
+                    ⚔️ ${titleMod}
                 </div>
             </div>
         `
@@ -2738,9 +2766,36 @@ function renderForecastUI() {
         }
     `;
 
-  // 2. Render the List (Scrollable Part)
+  // 2. Render Language Flags (At Bottom)
+  if (langContainer) {
+    langContainer.innerHTML = `
+        <button class="fc-lang-btn ${
+          currentForecastLang === "en" ? "active" : ""
+        }" onclick="setForecastLanguage('en')" title="English">
+            <img src="img/flags/en.png" alt="GB">
+        </button>
+        <button class="fc-lang-btn ${
+          currentForecastLang === "es" ? "active" : ""
+        }" onclick="setForecastLanguage('es')" title="Español">
+            <img src="img/flags/es.png" alt="ES">
+        </button>
+        <button class="fc-lang-btn ${
+          currentForecastLang === "fr" ? "active" : ""
+        }" onclick="setForecastLanguage('fr')" title="Français">
+            <img src="img/flags/fr.png" alt="FR">
+        </button>
+        <button class="fc-lang-btn ${
+          currentForecastLang === "pt" ? "active" : ""
+        }" onclick="setForecastLanguage('pt')" title="Português">
+            <img src="img/flags/pt.png" alt="BR">
+        </button>
+      `;
+  }
+
+  // 3. Render List content (Existing Logic)
   const dungeons =
     typeof FORECAST_DB !== "undefined" ? FORECAST_DB[displayDate] : null;
+
   if (!dungeons || dungeons.length === 0) {
     listContainer.innerHTML =
       '<div style="text-align:center; padding:20px; color:#666;">No data for this date.</div>';
@@ -2749,6 +2804,7 @@ function renderForecastUI() {
 
   const classic = dungeons.filter((d) => d.type.startsWith("DJ"));
   const modular = dungeons.filter((d) => d.type.startsWith("Modulox"));
+
   const classicNames = new Set(classic.map((d) => d.name));
   const modularNames = new Set(modular.map((d) => d.name));
   const intersections = new Set(
@@ -2764,17 +2820,22 @@ function renderForecastUI() {
 
 // Full Grid View function
 function renderGridView(container, classicList, modularList, intersections) {
+  // Translate Headers for Grid View too
+  const titleGuild =
+    UI_TRANSLATIONS["GUILD_HUNTERS"][currentForecastLang] || "GUILD HUNTERS";
+  const titleMod = UI_TRANSLATIONS["MODULUX"][currentForecastLang] || "MODULUX";
+
   let html = `<div class="forecast-grid">`;
   html += renderGridColumn(
     classicList,
-    "GUILD",
+    titleGuild,
     "🎯",
     "type-classic",
     intersections
   );
   html += renderGridColumn(
     modularList,
-    "MODULUX",
+    titleMod,
     "⚔️",
     "type-modular",
     intersections
@@ -2788,25 +2849,28 @@ function renderGridColumn(list, title, emoji, typeClass, intersections) {
         <div class="forecast-subsection-header">
             <div class="header-left"><span>${emoji} ${title}</span></div>
         </div>
-        <div class="forecast-subsection-content" style="display:block;">`;
+        <div class="forecast-subsection-content">`;
 
   if (list.length === 0)
     colHtml += `<div style="padding:10px; font-size:0.8em; color:#666;">None</div>`;
   else {
     list.forEach((d) => {
       const { badgeColor, typeLabel } = getDungeonStyles(d.type);
+      // Logic uses English Name, Display uses Translated Name
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-      // Get Location
+      // NEW: Translate Name
+      const displayName = getDungeonName(d.name);
+
       const location =
         typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
           ? DUNGEON_LOCATIONS[d.name]
-          : "Location Unknown";
+          : "";
 
       colHtml += `
-            <div class="compact-forecast-item ${typeClass} ${isIntersected}" title="${d.name}" data-tooltip="${location}">
+            <div class="compact-forecast-item ${typeClass} ${isIntersected}" title="${displayName}" data-tooltip="${location}">
                 <span class="compact-badge" style="background:${badgeColor};">${typeLabel}</span>
-                <span class="compact-name">${d.name}</span>
+                <span class="compact-name">${displayName}</span>
             </div>`;
     });
   }
@@ -2822,22 +2886,24 @@ function renderTabView(container, classicList, modularList, intersections) {
 
   let html = `<div class="forecast-list-container">`;
   if (targetList.length === 0) {
-    html += `<div style="padding:20px; text-align:center; color:#888; font-style:italic;">No dungeons found for this category.</div>`;
+    html += `<div style="padding:20px; text-align:center; color:#888; font-style:italic;">No dungeons found.</div>`;
   } else {
     targetList.forEach((d) => {
       const { badgeColor, typeLabel } = getDungeonStyles(d.type);
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-      // Location Lookup
+      // NEW: Translate Name
+      const displayName = getDungeonName(d.name);
+
       const location =
         typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
           ? DUNGEON_LOCATIONS[d.name]
-          : "Location Unknown";
+          : "";
 
       html += `
             <div class="full-forecast-item ${typeClass} ${isIntersected}" data-tooltip="${location}">
                 <span class="badge" style="background:${badgeColor};">${typeLabel}</span>
-                <span class="name">${d.name}</span>
+                <span class="name">${displayName}</span>
             </div>`;
     });
   }

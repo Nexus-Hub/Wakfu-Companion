@@ -832,12 +832,18 @@
         </button>
       </div>
 
-      <div class="sidebar-content">
-        <div class="forecast-main-container">
-          <!-- This part stays at the top -->
+      <div
+        class="sidebar-content"
+        style="display: flex; flex-direction: column"
+      >
+        <div
+          class="forecast-main-container"
+          style="flex: 1; display: flex; flex-direction: column; min-height: 0"
+        >
+          <!-- Header (Nav + Tabs) -->
           <div id="forecast-header-sticky"></div>
 
-          <!-- This part scrolls -->
+          <!-- List -->
           <div id="forecast-list-scrollable">
             <div style="text-align: center; padding: 20px; color: #888">
               Loading...
@@ -845,9 +851,12 @@
           </div>
         </div>
 
+        <!-- NEW: Language Selector at Bottom -->
+        <div id="forecast-lang-selector" class="fc-lang-container-bottom"></div>
+
         <div
           style="
-            margin-top: 8px;
+            margin-top: 5px;
             text-align: center;
             font-size: 0.7em;
             color: #666;
@@ -858,7 +867,7 @@
         </div>
       </div>
 
-      <!-- BMC Footer (duplicated for consistent look) -->
+      <!-- BMC Footer -->
       <div class="sidebar-footer">
         <a href="https://www.buymeacoffee.com/nexuswow" target="_blank">
           <img
