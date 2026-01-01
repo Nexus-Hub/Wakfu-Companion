@@ -506,6 +506,14 @@
             >
               Clear
             </button>
+            <button
+              class="pip-btn"
+              onclick="openQuickTransModal()"
+              title="Quick Translate (EN → ES/FR/PT)"
+              style="margin-right: 5px; font-size: 1.1rem"
+            >
+              🌐
+            </button>
             <!-- PiP Button -->
             <button
               class="pip-btn"
@@ -598,6 +606,85 @@
               onclick="setChatFilter('trade')"
             >
               TRADE
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Chat Translator Floating Window -->
+    <div
+      id="quick-trans-modal"
+      class="floating-window"
+      style="display: none; left: 50%; top: 20%; transform: translateX(-50%)"
+    >
+      <!-- Header is now the drag handle -->
+      <div class="modal-header draggable-header" id="qt-drag-handle">
+        <!-- Icon & Title Group -->
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+          "
+        >
+          <img
+            src="./img/headers/chat.png"
+            style="width: 24px; height: 24px; object-fit: contain"
+            onerror="this.style.display='none'"
+          />
+          <h3 style="margin: 0; color: var(--accent); font-size: 1.1rem">
+            Quick Chat Translator
+          </h3>
+        </div>
+
+        <button class="close-modal" onclick="closeQuickTransModal()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="input-group">
+          <label
+            >English Text (<span id="qt-char-count" style="color: #fff">0</span
+            >/300)</label
+          >
+          <textarea
+            id="qt-input"
+            class="qt-textarea"
+            maxlength="300"
+            placeholder="Type message..."
+          ></textarea>
+        </div>
+
+        <div class="qt-controls">
+          <span
+            style="
+              font-size: 0.7rem;
+              color: #888;
+              font-weight: bold;
+              letter-spacing: 1px;
+            "
+            >TRANSLATE:</span
+          >
+          <div class="qt-lang-group">
+            <button class="qt-lang-btn" onclick="performQuickTrans('es')">
+              ES
+            </button>
+            <button class="qt-lang-btn" onclick="performQuickTrans('fr')">
+              FR
+            </button>
+            <button class="qt-lang-btn" onclick="performQuickTrans('pt')">
+              PT
+            </button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Result</label>
+          <div class="qt-output-container">
+            <div id="qt-output" class="qt-output">...</div>
+            <button class="qt-copy-btn" onclick="copyQuickTrans()" title="Copy">
+              📋
             </button>
           </div>
         </div>

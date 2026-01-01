@@ -255,10 +255,18 @@ function initMonsterDatabase() {
   }
 }
 
-// Check for previous file immediately on load
+// Check for previous file immediately on load and Initialize
 document.addEventListener("DOMContentLoaded", () => {
+  //1. Core Logic
   checkPreviousFile();
-  initForecast(); // Initialize Forecast system
+  initForecast();
+
+  // 2. Draggable Window (Quick Translator)
+  const qtWindow = document.getElementById("quick-trans-modal");
+  const qtHandle = document.getElementById("qt-drag-handle");
+  if (qtWindow && qtHandle) {
+    makeDraggable(qtWindow, qtHandle);
+  }
 });
 
 // MODIFIED: Drop Zone handles BOTH Log files and CSV files
@@ -3354,6 +3362,138 @@ function viewHistory(index) {
   currentViewIndex = index;
   updateHistoryButtons();
   renderMeter(); // Will pick up the data based on index
+}
+
+// ==========================================
+// QUICK TRANSLATOR LOGIC
+// ==========================================
+
+function openQuickTransModal() {
+  const modal = document.getElementById("quick-trans-modal");
+  const input = document.getElementById("qt-input");
+  const counter = document.getElementById("qt-char-count");
+
+  // Reset state
+  input.value = "";
+  counter.textContent = "0";
+  document.getElementById("qt-output").textContent = "...";
+  document.getElementById("qt-output").style.color = "#666";
+
+  input.oninput = function () {
+    counter.textContent = this.value.length;
+  };
+
+  modal.style.display = "flex"; // Shows the window
+  input.focus();
+}
+
+function closeQuickTransModal() {
+  document.getElementById("quick-trans-modal").style.display = "none";
+}
+
+// --- Generic Drag Function ---
+function makeDraggable(element, handle) {
+  let pos1 = 0,
+    pos2 = 0,
+    pos3 = 0,
+    pos4 = 0;
+
+  handle.onmousedown = dragMouseDown;
+
+  function dragMouseDown(e) {
+    e = e || window.event;
+    e.preventDefault();
+    // Get the mouse cursor position at startup:
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    document.onmouseup = closeDragElement;
+    // Call a function whenever the cursor moves:
+    document.onmousemove = elementDrag;
+  }
+
+  function elementDrag(e) {
+    e = e || window.event;
+    e.preventDefault();
+    // Calculate the new cursor position:
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+
+    // Remove the CSS transform centering once we start dragging manually
+    element.style.transform = "none";
+
+    // Set the element's new position:
+    element.style.top = element.offsetTop - pos2 + "px";
+    element.style.left = element.offsetLeft - pos1 + "px";
+  }
+
+  function closeDragElement() {
+    // Stop moving when mouse button is released:
+    document.onmouseup = null;
+    document.onmousemove = null;
+  }
+}
+
+async function performQuickTrans(targetLang) {
+  const text = document.getElementById("qt-input").value.trim();
+  const outputEl = document.getElementById("qt-output");
+
+  if (!text) return;
+
+  // UI Feedback
+  outputEl.textContent = "Translating...";
+  outputEl.style.color = "#888";
+
+  // Call Google API: Source (sl) = en, Target (tl) = selected
+  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(
+    text
+  )}`;
+
+  try {
+    const response = await fetch(sourceUrl);
+    const data = await response.json();
+
+    if (data && data[0]) {
+      // Join parts if translation is split
+      const translatedText = data[0].map((x) => x[0]).join("");
+
+      outputEl.textContent = translatedText;
+      outputEl.style.color = "var(--accent)"; // Neon Blue
+    } else {
+      outputEl.textContent = "Translation Error.";
+      outputEl.style.color = "#e74c3c";
+    }
+  } catch (e) {
+    console.error("Quick Trans Error:", e);
+    outputEl.textContent = "Network Error.";
+    outputEl.style.color = "#e74c3c";
+  }
+}
+
+function copyQuickTrans() {
+  const outputEl = document.getElementById("qt-output");
+  const text = outputEl.textContent;
+  const btn = document.querySelector(".qt-copy-btn");
+
+  if (
+    text &&
+    text !== "..." &&
+    text !== "Translating..." &&
+    text !== "Network Error."
+  ) {
+    navigator.clipboard.writeText(text).then(() => {
+      // Visual Feedback
+      const originalIcon = btn.textContent;
+      btn.textContent = "✅";
+      btn.style.color = "#2ecc71";
+
+      setTimeout(() => {
+        btn.textContent = "📋"; // Restore icon (assuming clipboard emoji was used)
+        btn.style.color = "";
+      }, 1500);
+    });
+  }
 }
 
 // ==========================================
