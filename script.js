@@ -7,13 +7,13 @@ let fileHandle,
 let parseIntervalId = null,
   watchdogIntervalId = null;
 let pipWindow = null;
-let trackerViewMode = "grid"; // Default to grid
+let trackerViewMode = "grid";
 let combatLineCache = new Set();
 let logLineCache = new Set();
 let allKnownSpells = new Set();
-const MAX_CACHE_SIZE = 200;
+const MAX_CACHE_SIZE = 50;
+const MAX_CHAT_HISTORY = 200;
 let trackerDirty = false;
-const MAX_CHAT_HISTORY = 200; // Limit chat DOM nodes to save memory
 let fightHistory = []; // Stores objects: { damage: {}, healing: {}, armor: {} }
 let currentViewIndex = "live"; // 'live' or 0-4
 let hasUnsavedChanges = false; // Prevents duplicate saves
@@ -42,15 +42,6 @@ window.toggleIconVariant = function (playerName, imgEl) {
   // 4. Clear Cache (So the next re-render generates the correct version)
   delete playerIconCache[playerName];
 };
-
-// Helper to find elements in either the main document or the PiP document
-function getUI(id) {
-  if (pipWindow && pipWindow.document) {
-    const pipEl = pipWindow.document.getElementById(id);
-    if (pipEl) return pipEl;
-  }
-  return document.getElementById(id);
-}
 
 // Combat State
 let fightData = {}; // Damage
@@ -118,7 +109,7 @@ const trackerList = document.getElementById("tracker-list");
 let dragSrcIndex = null;
 let activeTooltip = null;
 
-// Helper to keep code clean
+// Helpers to keep code clean
 const NOISE_WORDS = new Set([
   "Block!",
   "Critical",
@@ -187,10 +178,6 @@ function generateSpellMap() {
 
   // ECAFLIP
   spellToClassMap["Blackjack"] = "ecaflip";
-
-  console.log(
-    `Class Database: ${Object.keys(classSpells).length} classes loaded.`
-  );
 }
 
 function showTooltip(text, e) {
@@ -247,22 +234,24 @@ function initMonsterDatabase() {
   monsterLookup = {};
   wakfuMonsters.forEach((m) => {
     // Map every language version of the name to the imgId
-    if (m.nameEN) monsterLookup[m.nameEN.toLowerCase()] = m.imgId;
-    if (m.nameFR) monsterLookup[m.nameFR.toLowerCase()] = m.imgId;
-    if (m.nameES) monsterLookup[m.nameES.toLowerCase()] = m.imgId;
-    if (m.namePT) monsterLookup[m.namePT.toLowerCase()] = m.imgId;
+    // Optimization: Intern strings by using the same reference where possible
+    const img = m.imgId;
+    if (m.nameEN) monsterLookup[m.nameEN.toLowerCase()] = img;
+    if (m.nameFR) monsterLookup[m.nameFR.toLowerCase()] = img;
+    if (m.nameES) monsterLookup[m.nameES.toLowerCase()] = img;
+    if (m.namePT) monsterLookup[m.namePT.toLowerCase()] = img;
   });
+
+  // MEMORY OPTIMIZATION:
+  // Try to clear the massive source array to free RAM.
+  // Note: This only works if 'wakfuMonsters' is declared with 'let' or 'var' in wakfu_monsters.js.
+  // If it is 'const', this will fail silently (caught by the block below).
+  try {
+    wakfuMonsters = null;
+  } catch (e) {
+    // Silently fail if wakfuMonsters is const
+  }
 }
-
-// ==========================================
-// INITIALIZATION & DRAG/DROP SETUP
-// ==========================================
-generateSpellMap();
-renderMeter();
-initTrackerDropdowns();
-initMonsterDatabase();
-
-setupDragAndDrop();
 
 // Check for previous file immediately on load
 document.addEventListener("DOMContentLoaded", () => {
@@ -449,7 +438,6 @@ async function saveFileHandleToDB(handle) {
       const req = store.put(handle, "activeLog");
 
       tx.oncomplete = () => {
-        console.log("File handle saved successfully.");
         resolve();
       };
 
@@ -700,6 +688,9 @@ function updateItemValue(id, key, val) {
 }
 
 function removeTrackedItem(id) {
+  // Force tooltip to hide immediately when deleting
+  hideTooltip();
+
   // Filter the array to exclude the item with the matching ID
   trackedItems = trackedItems.filter((t) => t.id !== id);
 
@@ -831,7 +822,6 @@ function renderTracker() {
 
   // Use displayItems instead of trackedItems for the loop
   displayItems.forEach((item, index) => {
-    // ... [Rest of the existing render logic remains exactly the same] ...
     const isComplete = item.current >= item.target && item.target > 0;
     const progress = Math.min((item.current / (item.target || 1)) * 100, 100);
 
@@ -1032,6 +1022,15 @@ function processItemLog(line) {
   }
 }
 
+// Helper to find elements in either the main document or the PiP document
+function getUI(id) {
+  if (pipWindow && pipWindow.document) {
+    const pipEl = pipWindow.document.getElementById(id);
+    if (pipEl) return pipEl;
+  }
+  return document.getElementById(id);
+}
+
 function showTrackerNotification(qty, itemName, type = "pickup") {
   // Define where to show notifications: Main Window + PiP Window (if open)
   const targets = [document];
@@ -1206,7 +1205,7 @@ function processLine(line) {
   );
 
   if (battleJustFinished) {
-    // NEW: Save immediately when fight ends
+    // Save immediately when fight ends
     saveFightToHistory();
 
     awaitingNewFight = true;
@@ -1296,9 +1295,7 @@ function processItemLog(line) {
             showTrackerNotification(null, item.name, true);
           }, 200);
 
-          const goalSound = new Audio(
-            "https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"
-          );
+          const goalSound = new Audio("sfx/tracking_completed.mp3");
           goalSound.volume = 0.05;
           goalSound.play().catch((e) => {});
         }
@@ -1306,7 +1303,6 @@ function processItemLog(line) {
     });
 
     if (updated) {
-      // OPTIMIZATION: Do not render here. Just set the flag.
       trackerDirty = true;
     }
   }
@@ -1468,7 +1464,7 @@ function normalizeElement(el) {
     air: "Air",
     stasis: "Stasis",
     light: "Light",
-    neutral: "Neutral", // Added
+    neutral: "Neutral",
     // French
     feu: "Fire",
     eau: "Water",
@@ -1476,7 +1472,7 @@ function normalizeElement(el) {
     aire: "Air",
     stase: "Stasis",
     lumière: "Light",
-    neutre: "Neutral", // Added
+    neutre: "Neutral",
     // Spanish
     fuego: "Fire",
     agua: "Water",
@@ -1484,7 +1480,7 @@ function normalizeElement(el) {
     aire: "Air",
     estasis: "Stasis",
     luz: "Light",
-    neutral: "Neutral", // Added
+    neutral: "Neutral",
     // Portuguese
     fogo: "Fire",
     água: "Water",
@@ -1492,7 +1488,7 @@ function normalizeElement(el) {
     ar: "Air",
     estase: "Stasis",
     luz: "Light",
-    neutro: "Neutral", // Added
+    neutro: "Neutral",
   };
   return (
     elementMap[low] ||
@@ -1710,48 +1706,6 @@ function processFightLog(line) {
   }
 }
 
-function normalizeElement(el) {
-  if (!el) return null;
-  const low = el.toLowerCase().trim();
-  const elementMap = {
-    // English
-    fire: "Fire",
-    water: "Water",
-    earth: "Earth",
-    air: "Air",
-    stasis: "Stasis",
-    light: "Light",
-    // French
-    feu: "Fire",
-    eau: "Water",
-    terre: "Earth",
-    aire: "Air",
-    stase: "Stasis",
-    lumière: "Light",
-    // Spanish
-    fuego: "Fire",
-    agua: "Water",
-    tierra: "Earth",
-    aire: "Air",
-    estasis: "Stasis",
-    luz: "Light",
-    // Portuguese
-    fogo: "Fire",
-    água: "Water",
-    terra: "Earth",
-    ar: "Air",
-    estase: "Stasis",
-    luz: "Light",
-  };
-  return (
-    elementMap[low] ||
-    (["Fire", "Water", "Earth", "Air", "Stasis", "Light"].includes(el)
-      ? el
-      : null)
-  );
-}
-
-// Helper to keep code clean
 function routeCombatData(
   unit,
   armorUnits,
@@ -1785,7 +1739,7 @@ function updateCombatData(dataSet, player, spell, amount, element) {
   }
   dataSet[player].spells[spellKey].val += amount;
 
-  // NEW: Mark as dirty so we know we have data to save
+  // Mark as dirty so we know we have data to save
   hasUnsavedChanges = true;
 }
 
@@ -1902,7 +1856,13 @@ document.getElementById("resetBtn").addEventListener("click", performReset);
 // ==========================================
 // RENDER METER
 // ==========================================
+
 function renderMeter() {
+  // MEMORY OPTIMIZATION: Prune icon cache if it gets too large
+  if (Object.keys(playerIconCache).length > 100) {
+    playerIconCache = {}; // Flush cache to release string memory
+  }
+
   // DETERMINE DATA SOURCE & CONTEXT
   let sourceFight, sourceHeal, sourceArmor;
   let sourceClasses, sourceOverrides; // Context for Ally Detection
@@ -1986,6 +1946,9 @@ function renderMeter() {
     }
 
     const maxVal = list[0].total;
+
+    // MEMORY OPTIMIZATION: Use DocumentFragment for batch DOM insertion
+    const fragment = document.createDocumentFragment();
 
     list.forEach((p) => {
       const barPercent = (p.total / maxVal) * 100;
@@ -2131,8 +2094,12 @@ function renderMeter() {
         });
         rowBlock.appendChild(spellContainer);
       }
-      container.appendChild(rowBlock);
+      // APPEND TO FRAGMENT INSTEAD OF CONTAINER DIRECTLY
+      fragment.appendChild(rowBlock);
     });
+
+    // SINGLE DOM INSERTION
+    container.appendChild(fragment);
   };
 
   renderList(allies, alliesContainer, totalAllyVal);
@@ -2374,7 +2341,7 @@ function addChatMessage(time, channel, author, message) {
   const emptyState = chatList.querySelector(".empty-state");
   if (emptyState) chatList.innerHTML = "";
 
-  // MEMORY FIX: Prune old messages if we exceed the limit
+  // Prune old messages if we exceed the limit
   while (chatList.children.length >= MAX_CHAT_HISTORY) {
     chatList.removeChild(chatList.firstChild);
   }
@@ -2403,7 +2370,7 @@ function addChatMessage(time, channel, author, message) {
     "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
-  // --- NEW: Game Log Number Highlighting ---
+  // --- NGame Log Number Highlighting ---
   let displayMessage = message;
   // Check if channel contains "Log" (Game Log, Combat Log, etc.) or is Information
   if (
@@ -2724,7 +2691,7 @@ function renderForecastUI() {
 
   const headerContainer = document.getElementById("forecast-header-sticky");
   const listContainer = document.getElementById("forecast-list-scrollable");
-  const langContainer = document.getElementById("forecast-lang-selector"); // NEW CONTAINER
+  const langContainer = document.getElementById("forecast-lang-selector");
 
   if (!headerContainer || !listContainer) return;
 
@@ -2859,7 +2826,7 @@ function renderGridColumn(list, title, emoji, typeClass, intersections) {
       // Logic uses English Name, Display uses Translated Name
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-      // NEW: Translate Name
+      // Translate Name
       const displayName = getDungeonName(d.name);
 
       const location =
@@ -2892,7 +2859,7 @@ function renderTabView(container, classicList, modularList, intersections) {
       const { badgeColor, typeLabel } = getDungeonStyles(d.type);
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
 
-      // NEW: Translate Name
+      // Translate Name
       const displayName = getDungeonName(d.name);
 
       const location =
@@ -3241,18 +3208,20 @@ function saveFightToHistory() {
   // Add to start of array
   fightHistory.unshift(snapshot);
 
-  // Keep max 5
-  if (fightHistory.length > 5) {
+  // MEMORY OPTIMIZATION: Limit history to MAX_FIGHT_HISTORY (5)
+  while (fightHistory.length > MAX_FIGHT_HISTORY) {
     fightHistory.pop();
   }
 
   try {
     localStorage.setItem("wakfu_fight_history", JSON.stringify(fightHistory));
   } catch (e) {
-    console.error("Failed to save history", e);
+    console.error("Failed to save history - Storage full?", e);
+    // If storage is full, clear history to prevent app crash
+    fightHistory = [];
   }
 
-  // NEW: Mark as saved
+  // Mark as saved
   hasUnsavedChanges = false;
 
   updateHistoryButtons();
@@ -3304,8 +3273,14 @@ function viewHistory(index) {
   renderMeter(); // Will pick up the data based on index
 }
 
+// ==========================================
 // INITIALIZATION
-// Update timer every minute
+// ==========================================
+generateSpellMap();
+renderMeter();
+initTrackerDropdowns();
+initMonsterDatabase();
+setupDragAndDrop();
 setInterval(updateDailyTimer, 60000);
 updateDailyTimer();
 updateWatchdogUI();

@@ -1291,5 +1291,5 @@ const monsterResources = [
     level: 51,
     rarity: "Common",
     imgId: "53111569",
-  }
+  },
 ];
