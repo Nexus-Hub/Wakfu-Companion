@@ -1,3 +1,5 @@
+let currentChatSearchTerm = "";
+
 // LANGUAGE HEURISTICS
 const ES_UNIQUE = new Set([
   "y",
@@ -118,7 +120,7 @@ function processChatLog(line) {
     }
   }
 
-  // --- SMART FILTERING OPTIMIZATION ---
+  // --- SMART FILTERING---
   // If the channel explicitly tags the language (e.g. "[Recruitment (ES)]"),
   // and that language is DISABLED in settings, we flag this message to SKIP translation.
 
@@ -141,6 +143,7 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   const emptyState = chatList.querySelector(".empty-state");
   if (emptyState) chatList.innerHTML = "";
 
+  // Prune history
   while (chatList.children.length >= MAX_CHAT_HISTORY) {
     chatList.removeChild(chatList.firstChild);
   }
@@ -153,20 +156,54 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
 
   const color = getChannelColor(category);
 
-  if (
-    currentChatFilter !== "all" &&
-    category !== "vicinity" &&
-    category !== "private" &&
-    category !== currentChatFilter
-  ) {
-    div.style.display = "none";
+  // Cache the search text immediately (Lowercase)
+  // We attach it to the DOM object directly to avoid DOM reads later
+  div._searchText = `[${channel}] ${author} ${message}`.toLowerCase();
+
+  // --- FILTERING LOGIC ---
+  let isChannelVisible = false;
+
+  if (currentChatFilter === "all") {
+    // In ALL mode: Show everything EXCEPT logs
+    if (category !== "logs") {
+      isChannelVisible = true;
+    }
+  } else {
+    // In Specific Modes:
+    // A. Match exact category
+    if (category === currentChatFilter) {
+      isChannelVisible = true;
+    }
+    // B. Show Vicinity/Private unless we are in 'logs' mode
+    else if (
+      currentChatFilter !== "logs" &&
+      (category === "vicinity" || category === "private")
+    ) {
+      isChannelVisible = true;
+    }
   }
+
+  // Text Search Check
+  let isTextMatch = true;
+  if (
+    typeof currentChatSearchTerm !== "undefined" &&
+    currentChatSearchTerm.trim() !== ""
+  ) {
+    if (!div._searchText.includes(currentChatSearchTerm)) {
+      isTextMatch = false;
+    }
+  }
+
+  // Use CSS Class for visibility
+  if (!isChannelVisible || !isTextMatch) {
+    div.classList.add("hidden-msg");
+  }
+  // -----------------------
 
   const transId =
     "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
-  // Game Log Number Highlighting
   let displayMessage = message;
   if (
     channel.toLowerCase().includes("log") ||
@@ -195,42 +232,96 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   chatList.appendChild(div);
   chatList.scrollTop = chatList.scrollHeight;
 
-  // Translation Queuing
-  // Only queue if Master Switch is ON AND the channel check didn't flag it to skip
   if (transConfig.enabled && !skipAuto) {
     queueTranslation(message, transId, false);
   }
 }
 
+function onChatSearchInput(val) {
+  currentChatSearchTerm = val.toLowerCase().trim();
+  refreshChatVisibility();
+}
+
+function clearChatSearch() {
+  const input = document.getElementById("chat-text-filter");
+  if (input) input.value = "";
+  currentChatSearchTerm = "";
+  refreshChatVisibility();
+}
+
 function setChatFilter(filter) {
   currentChatFilter = filter;
+
+  // Update Buttons UI
   document
     .querySelectorAll(".filter-btn")
     .forEach((btn) => btn.classList.remove("active"));
-  const btnId =
-    "filter" +
-    (filter === "all"
-      ? "ALL"
-      : filter === "recruitment"
-      ? "RECRUIT"
-      : filter === "community"
-      ? "COMM"
-      : filter.toUpperCase());
+
+  let btnId = "filterALL";
+  if (filter !== "all") {
+    // Map filter to ID (Recruitment/Community have specific IDs vs Values)
+    if (filter === "recruitment") btnId = "filterRECRUIT";
+    else if (filter === "community") btnId = "filterCOMM";
+    else if (filter === "logs") btnId = "filterLOGS";
+    else btnId = "filter" + filter.toUpperCase();
+  }
+
   const activeBtn = document.getElementById(btnId);
   if (activeBtn) activeBtn.classList.add("active");
 
+  refreshChatVisibility();
+}
+
+function refreshChatVisibility() {
+  // Use a loop that minimizes DOM reflows
   const messages = document.querySelectorAll(".chat-msg");
-  messages.forEach((msg) => {
+  const isSearchActive = currentChatSearchTerm !== "";
+
+  // Cache filter state to avoid checking globals inside loop
+  const filterIsAll = currentChatFilter === "all";
+  const filterIsLogs = currentChatFilter === "logs";
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
     const cat = msg.getAttribute("data-category");
-    if (cat === "vicinity" || cat === "private") {
-      msg.style.display = "block";
-    } else if (currentChatFilter === "all") {
-      msg.style.display = "block";
+
+    // 1. Check Channel Filter (Pure Logic, No DOM reads)
+    let channelMatch = false;
+
+    if (filterIsAll) {
+      // Show everything EXCEPT logs
+      if (cat !== "logs") channelMatch = true;
     } else {
-      if (cat === currentChatFilter) msg.style.display = "block";
-      else msg.style.display = "none";
+      // Exact Match
+      if (cat === currentChatFilter) {
+        channelMatch = true;
+      }
+      // Exceptions for Vicinity/Private (Visible everywhere except LOGS)
+      else if (!filterIsLogs && (cat === "vicinity" || cat === "private")) {
+        channelMatch = true;
+      }
     }
-  });
+
+    // 2. Check Text Filter (Using CACHED property - Instant access)
+    let textMatch = true;
+    if (isSearchActive) {
+      // Use the cached _searchText property we created in addChatMessage
+      // Fallback to textContent if property is missing (legacy messages)
+      const textContent = msg._searchText || msg.textContent.toLowerCase();
+
+      if (!textContent.includes(currentChatSearchTerm)) {
+        textMatch = false;
+      }
+    }
+
+    // 3. Apply Visibility via Class (Faster than style.display)
+    if (channelMatch && textMatch) {
+      msg.classList.remove("hidden-msg");
+    } else {
+      msg.classList.add("hidden-msg");
+    }
+  }
+
   chatList.scrollTop = chatList.scrollHeight;
 }
 
@@ -238,7 +329,24 @@ function setChatFilter(filter) {
 function getCategoryFromChannel(channelName) {
   const lower = channelName.toLowerCase();
 
-  // Vicinity: Vicinity, Proximité, Local, Vizinhança
+  // 1. LOGS (Game Log, Fight Log, Combat Info, Errors)
+  if (
+    lower.includes("log") ||
+    lower.includes("combat") ||
+    lower.includes("fight") ||
+    lower.includes("information") ||
+    lower.includes("información") ||
+    lower.includes("informações") ||
+    lower.includes("registro") || // PT: Registro de Lutas
+    lower.includes("lutas") || // PT: Lutas
+    lower.includes("error") || // EN/ES: Error
+    lower.includes("erreur") || // FR: Erreur
+    lower.includes("erro") // PT: Erro
+  ) {
+    return "logs";
+  }
+
+  // 2. VICINITY
   if (
     lower.includes("vicinity") ||
     lower.includes("proximit") ||
@@ -247,15 +355,16 @@ function getCategoryFromChannel(channelName) {
   )
     return "vicinity";
 
-  // Private: Private, Whisper, Privé, Privado
+  // 3. PRIVATE
   if (
     lower.includes("private") ||
     lower.includes("whisper") ||
-    lower.includes("priv")
+    lower.includes("priv") ||
+    lower.includes("sussurro")
   )
     return "private";
 
-  // Group: Group, Groupe, Grupo
+  // 4. GROUP
   if (
     lower.includes("group") ||
     lower.includes("groupe") ||
@@ -263,7 +372,7 @@ function getCategoryFromChannel(channelName) {
   )
     return "group";
 
-  // Guild: Guild, Guilde, Gremio, Guilda
+  // 5. GUILD
   if (
     lower.includes("guild") ||
     lower.includes("guilde") ||
@@ -271,7 +380,7 @@ function getCategoryFromChannel(channelName) {
   )
     return "guild";
 
-  // Trade: Trade, Commerce, Comercio, Comércio
+  // 6. TRADE
   if (
     lower.includes("trade") ||
     lower.includes("commerce") ||
@@ -279,7 +388,7 @@ function getCategoryFromChannel(channelName) {
   )
     return "trade";
 
-  // Community: Community, Communauté, Comunidad, Comunidade
+  // 7. COMMUNITY
   if (
     lower.includes("community") ||
     lower.includes("communaut") ||
@@ -288,7 +397,7 @@ function getCategoryFromChannel(channelName) {
   )
     return "community";
 
-  // Recruitment: Recruitment, Recrutement, Reclutamiento, Recrutamento
+  // 8. RECRUITMENT
   if (
     lower.includes("recruitment") ||
     lower.includes("recrutement") ||
@@ -297,10 +406,10 @@ function getCategoryFromChannel(channelName) {
   )
     return "recruitment";
 
-  // Politics: Politics, Politique, Política
+  // 9. POLITICS
   if (lower.includes("politic")) return "politics";
 
-  // PvP: PvP, JcJ, Camp
+  // 10. PVP
   if (lower.includes("pvp") || lower.includes("jcj") || lower.includes("camp"))
     return "pvp";
 
@@ -309,6 +418,7 @@ function getCategoryFromChannel(channelName) {
 
 function getChannelColor(category) {
   const map = {
+    logs: "#bbbbbb", // Grey for logs
     vicinity: CHAT_COLORS.Vicinity,
     private: CHAT_COLORS.Private,
     group: CHAT_COLORS.Group,

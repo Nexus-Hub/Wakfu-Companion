@@ -550,7 +550,19 @@
             >
               OTHERS
             </button>
-            <div style="flex-grow: 1"></div>
+
+            <div class="chat-search-inline">
+              <input
+                type="text"
+                id="chat-text-filter"
+                placeholder="Filter..."
+                oninput="onChatSearchInput(this.value)"
+              />
+              <button class="chat-search-clear" onclick="clearChatSearch()">
+                ×
+              </button>
+            </div>
+
             <button
               class="lang-btn master-on"
               id="btnMaster"
@@ -570,7 +582,14 @@
               id="filterALL"
               onclick="setChatFilter('all')"
             >
-              ALL
+              CHAT
+            </button>
+            <button
+              class="filter-btn"
+              id="filterLOGS"
+              onclick="setChatFilter('logs')"
+            >
+              LOGS
             </button>
             <button
               class="filter-btn"
@@ -591,14 +610,14 @@
               id="filterRECRUIT"
               onclick="setChatFilter('recruitment')"
             >
-              RECRUIT
+              RECRUITMENT
             </button>
             <button
               class="filter-btn"
               id="filterCOMM"
               onclick="setChatFilter('community')"
             >
-              COMM
+              COMMUNITY
             </button>
             <button
               class="filter-btn"

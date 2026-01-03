@@ -912,9 +912,9 @@ button.reset-btn:hover {
   padding: 8px 10px;
   border-top: 1px solid #333;
   display: flex;
-  gap: 5px;
+  gap: 4px;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: space-between;
 }
 .game-log-number {
   color: #ff4d4d; /* Bright Red/Salmon matching Wakfu logs */
@@ -925,10 +925,12 @@ button.reset-btn:hover {
   color: #777;
   border: 1px solid #444;
   padding: 5px 10px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
   border-radius: 4px;
   flex-grow: 1;
   text-transform: uppercase;
+  min-width: fit-content;
   max-width: 100px;
 }
 .filter-btn.active {
@@ -2879,4 +2881,55 @@ body.pip-window .empty-state {
 .draggable-header:active {
   background: #333;
   cursor: grabbing;
+}
+
+#chat-text-filter {
+  width: 100%;
+  background: #111;
+  border: 1px solid #444;
+  color: #eee;
+  padding: 0 8px;
+  height: 26px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+#chat-text-filter:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chat-search-clear {
+  background: transparent;
+  border: none;
+  color: #666;
+  width: 20px;
+  height: 100%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.chat-search-clear:hover {
+  color: #fff;
+  background: transparent;
+}
+
+.chat-search-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-grow: 1; /* Fills the space between buttons */
+  margin: 0 10px;
+}
+
+/* Optimization: Class to hide filtered messages */
+.chat-msg.hidden-msg {
+  display: none !important;
 }

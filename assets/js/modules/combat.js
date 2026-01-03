@@ -712,9 +712,7 @@ function processLine(line) {
   );
 
   if (battleJustFinished) {
-    // Save immediately when fight ends
     saveFightToHistory();
-
     awaitingNewFight = true;
     updateWatchdogUI();
   }
@@ -728,19 +726,22 @@ function processLine(line) {
   }
 
   try {
-    // OPTIMIZED: Use Global Constant instead of recreating array
+    // 1. DATA LOGIC (Update Stats/Tracker)
     const isLoot = LOOT_KEYWORDS.some((kw) => lineLower.includes(kw));
-
-    if (isLoot) {
-      processItemLog(line);
-    } else if (
+    const isCombat =
       lineLower.includes("[fight log]") ||
       lineLower.includes("[information (combat)]") ||
       lineLower.includes("[información (combate)]") ||
-      lineLower.includes("[registro de lutas]")
-    ) {
+      lineLower.includes("[registro de lutas]");
+
+    if (isLoot) {
+      processItemLog(line);
+    } else if (isCombat) {
       processFightLog(line);
-    } else if (line.match(/^\d{2}:\d{2}:\d{2}/)) {
+    }
+
+    // 2. UI LOGIC (Update Chat Window)
+    if (line.match(/^\d{2}:\d{2}:\d{2}/)) {
       processChatLog(line);
     }
   } catch (err) {
@@ -749,7 +750,6 @@ function processLine(line) {
 }
 
 async function startTracking(handle) {
-  // Save to DB for next time (AWAIT ensures it saves before continuing)
   await saveFileHandleToDB(handle);
 
   document.getElementById("setup-panel").style.display = "none";
