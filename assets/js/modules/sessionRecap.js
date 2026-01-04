@@ -44,9 +44,13 @@ const REGEX_CHALLENGE =
 /**
  * Loads data from LocalStorage on init
  */
+/**
+ * Loads data from LocalStorage on init and handles Timer Pause logic
+ */
 function loadSessionData() {
   const stored = localStorage.getItem("wakfu_session_stats");
   const storedTime = localStorage.getItem("wakfu_session_start");
+  const storedLastActive = localStorage.getItem("wakfu_session_last_active");
 
   if (stored) {
     try {
@@ -74,6 +78,22 @@ function loadSessionData() {
 
   if (storedTime) {
     sessionStartTime = parseInt(storedTime, 10);
+
+    // --- PAUSE LOGIC ---
+    // If the page was closed/inactive for > 60 seconds, shift the start time
+    // so the timer doesn't count the time the page was closed.
+    if (storedLastActive) {
+      const lastActive = parseInt(storedLastActive, 10);
+      const now = Date.now();
+      const gap = now - lastActive;
+
+      // 60 seconds = 60000 ms
+      if (gap > 60000) {
+        sessionStartTime += gap;
+        // Save the adjusted time immediately so we don't re-adjust on refresh
+        saveSessionData();
+      }
+    }
   }
 }
 
@@ -84,8 +104,11 @@ function saveSessionData() {
   localStorage.setItem("wakfu_session_stats", JSON.stringify(sessionStats));
   if (sessionStartTime) {
     localStorage.setItem("wakfu_session_start", sessionStartTime.toString());
+    // Save the current time as the "Last Active" moment
+    localStorage.setItem("wakfu_session_last_active", Date.now().toString());
   } else {
     localStorage.removeItem("wakfu_session_start");
+    localStorage.removeItem("wakfu_session_last_active");
   }
 }
 
@@ -309,3 +332,7 @@ loadSessionData();
 window.toggleSessionWindow = toggleSessionWindow;
 window.resetSessionStats = resetSessionStats;
 window.startSessionTimer = startSessionTimer;
+
+window.addEventListener("beforeunload", () => {
+  saveSessionData();
+});
