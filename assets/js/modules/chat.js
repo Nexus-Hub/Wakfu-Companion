@@ -276,9 +276,23 @@ function formatFightLog(message) {
     "Stasis|Stase|Estasis|Estase": { cls: "dmg-stasis", icon: "sSTASIS.png" },
   };
 
-  // 1. Full Elemental Damage
-  // Regex: Number, Unit, (Element)
-  // Reconstructs: [Colored Number] [Space] [Hidden Text] [Icon]
+  // 1. Elemental Resistance (Specific Logic: Add + to positive numbers, replace text with Icon)
+  formatted = formatted.replace(
+    /(?<!>)([-+]?\s?[\d,.]+)(\s+Elemental Resistance)/gi,
+    (match, numberStr) => {
+      let cleanNum = numberStr.trim();
+      const val = parseFloat(cleanNum.replace(/[,.\s]/g, ""));
+
+      // Only add + if the number is strictly positive and doesn't have a sign yet
+      if (val > 0 && !cleanNum.includes("+") && !cleanNum.includes("-")) {
+        cleanNum = "+" + cleanNum;
+      }
+
+      return `<span style="font-weight:bold; color:#ccc;">${cleanNum}</span> <img src="./assets/img/elements/Elemental_Resistance.png" class="element-icon" alt="Res" title="Elemental Resistance">`;
+    }
+  );
+
+  // 2. Full Elemental Damage (Standard formatting, no sign alteration)
   for (const [pattern, data] of Object.entries(elementMap)) {
     const regex = new RegExp(
       `(-\\s?[\\d,.]+)\\s+(HP|PV|PdV)\\s+\\(\\s*((?:${pattern}))\\s*\\)`,
@@ -288,7 +302,6 @@ function formatFightLog(message) {
     formatted = formatted.replace(
       regex,
       (match, dmgPart, unitPart, elementWord) => {
-        // Added space after </span>
         return (
           `<span class="${data.cls}">${dmgPart} ${unitPart}</span> ` +
           `<span class="copy-only">(${elementWord})</span>` +
@@ -298,14 +311,13 @@ function formatFightLog(message) {
     );
   }
 
-  // 2. Neutral Damage
-  // Reconstructs: [Red Number] [Space] [Neutral Icon]
+  // 3. Neutral Damage (Standard formatting)
   formatted = formatted.replace(
     /(?<!>)(-\s?[\d,.]+)\s(HP|PV|PdV)(?!\s*<span)(?!\s*<img)(?![^<]*<\/span>)/g,
     `<span class="game-log-number">$1 $2</span> <img src="./assets/img/elements/sNEUTRAL.png" class="element-icon" alt="">`
   );
 
-  // 3. Standalone Elements
+  // 4. Standalone Elements (Icon replacement only)
   for (const [pattern, data] of Object.entries(elementMap)) {
     const simpleRegex = new RegExp(
       `(?<!>)\\(\\s*((?:${pattern}))\\s*\\)`,
@@ -316,7 +328,7 @@ function formatFightLog(message) {
     });
   }
 
-  // 4. Level/XP Numbers
+  // 5. Level/XP Numbers (Coloring only, NO sign alteration)
   if (
     lower.includes("level") ||
     lower.includes("lvl") ||
@@ -329,7 +341,7 @@ function formatFightLog(message) {
     );
   }
 
-  // 5. Parentheses Bolding
+  // 6. Parentheses Bolding
   formatted = formatted.replace(/\(([^<>()]+)\)/g, "(<b>$1</b>)");
 
   return formatted;

@@ -143,6 +143,44 @@ body {
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
+/* --- Relic Table Tooltips --- */
+.relic-tooltip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted #666;
+}
+
+.relic-tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: var(--accent);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: pre;
+  text-align: left;
+  border: 1px solid var(--accent);
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.relic-tooltip:hover::before {
+  content: "";
+  position: absolute;
+  bottom: 115%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: var(--accent) transparent transparent transparent;
+  z-index: 100;
+}
+
 /* Sidebar BMC styling */
 .sidebar-footer {
   padding: 15px;
@@ -218,37 +256,6 @@ button.reset-btn {
 button.reset-btn:hover {
   background-color: #ff4d4d;
   border-color: #ff4d4d;
-}
-
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  margin-right: auto;
-}
-.timer-input {
-  background: #1a1a1a;
-  border: 1px solid #444;
-  color: #fff;
-  width: 45px;
-  height: 28px;
-  padding: 0 5px 0 0;
-  border-radius: 4px;
-  text-align: center;
-  font-weight: bold;
-  font-size: 0.75rem;
-  font-family: inherit;
-}
-.timer-input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-.input-unit {
-  position: absolute;
-  right: 5px;
-  color: #666;
-  font-size: 0.7rem;
-  pointer-events: none;
 }
 
 /* --- Panel Styles --- */
@@ -331,36 +338,6 @@ button.reset-btn:hover {
 #tab-armor.active {
   border-bottom-color: var(--armor-color);
   color: var(--armor-color);
-}
-
-/* --- Meter UI --- */
-.dm-header-left {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-.dm-header-left span {
-  flex-grow: 1;
-}
-.dm-btn-group {
-  display: flex;
-  gap: 5px;
-  margin-right: 15px;
-}
-.dm-mini-btn {
-  background: #444;
-  color: #fff;
-  border: 1px solid #555;
-  padding: 2px 8px;
-  font-size: 0.8rem;
-  border-radius: 3px;
-  min-width: auto;
-  cursor: pointer;
-}
-.dm-mini-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #000;
 }
 
 /* Split View */
@@ -1188,8 +1165,8 @@ button.reset-btn:hover {
 }
 
 .sidebar-section.collapsed h4 {
-  margin-bottom: 0; /* Remove spacing below header when collapsed */
-  border-bottom-color: transparent; /* Optional: hide separator line when collapsed */
+  margin-bottom: 0;
+  border-bottom-color: transparent;
 }
 
 /* Toggle Arrow */
@@ -1213,6 +1190,19 @@ button.reset-btn:hover {
 }
 
 /* Route Styling */
+.route-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px; /* Vertical space between rows */
+}
+.route-row {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  flex-wrap: nowrap;
+}
 .route-box {
   background: #222;
   border-radius: 8px;
@@ -1229,7 +1219,7 @@ button.reset-btn:hover {
 .route-steps {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px 8px;
+  gap: 3px 4px;
   align-items: center;
   line-height: 1.4;
   font-size: 0.85rem;
@@ -1242,6 +1232,8 @@ button.reset-btn:hover {
   border: 1px solid #444;
   position: relative;
   cursor: default;
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 .route-step[data-tooltip] {
   cursor: help;
@@ -1252,8 +1244,9 @@ button.reset-btn:hover {
   background: #444;
 }
 .route-arrow {
-  color: #666;
-  font-weight: bold;
+  color: #555;
+  font-size: 0.7rem;
+  user-select: none;
 }
 
 /* Tooltips */

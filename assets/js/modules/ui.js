@@ -459,11 +459,9 @@ function updateDailyTimer() {
   // Convert to HH:MM
   const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
   const minutes = Math.floor((diffMs / (1000 * 60)) % 60);
-
   const hStr = hours.toString().padStart(2, "0");
   const mStr = minutes.toString().padStart(2, "0");
-
-  timerEl.textContent = `${hStr}:${mStr}`;
+  timerEl.textContent = `${hStr}h${mStr}m`;
 }
 
 // SIDEBAR TOGGLE
