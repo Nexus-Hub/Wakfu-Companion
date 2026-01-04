@@ -74,18 +74,34 @@ const PT_UNIQUE = new Set([
   "são",
 ]);
 
-function getChannelColor(channelName) {
-  if (channelName.includes("Vicinity")) return CHAT_COLORS.Vicinity;
-  if (channelName.includes("Private") || channelName.includes("Whisper"))
-    return CHAT_COLORS.Private;
-  if (channelName.includes("Group")) return CHAT_COLORS.Group;
-  if (channelName.includes("Guild")) return CHAT_COLORS.Guild;
-  if (channelName.includes("Trade")) return CHAT_COLORS.Trade;
-  if (channelName.includes("Politics")) return CHAT_COLORS.Politics;
-  if (channelName.includes("PvP")) return CHAT_COLORS.PvP;
-  if (channelName.includes("Community")) return CHAT_COLORS.Community;
-  if (channelName.includes("Recruitment")) return CHAT_COLORS.Recruitment;
-  return CHAT_COLORS.Default;
+const CHAT_COLORS = {
+  Logs: "#bbbbbb",
+  Vicinity: "#cccccc",
+  Private: "#00e1ff",
+  Group: "#aa66ff",
+  Guild: "#ffaa00",
+  Trade: "#dd7700",
+  Politics: "#ffff00",
+  PvP: "#00aaaa",
+  Community: "#3366ff",
+  Recruitment: "#ff2255",
+  Default: "#888888",
+};
+
+function getChannelColor(category) {
+  const map = {
+    logs: CHAT_COLORS.Logs,
+    vicinity: CHAT_COLORS.Vicinity,
+    private: CHAT_COLORS.Private,
+    group: CHAT_COLORS.Group,
+    guild: CHAT_COLORS.Guild,
+    trade: CHAT_COLORS.Trade,
+    politics: CHAT_COLORS.Politics,
+    pvp: CHAT_COLORS.PvP,
+    community: CHAT_COLORS.Community,
+    recruitment: CHAT_COLORS.Recruitment,
+  };
+  return map[category] || CHAT_COLORS.Default;
 }
 
 function processChatLog(line) {
@@ -143,7 +159,6 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   const emptyState = chatList.querySelector(".empty-state");
   if (emptyState) chatList.innerHTML = "";
 
-  // Prune history
   while (chatList.children.length >= MAX_CHAT_HISTORY) {
     chatList.removeChild(chatList.firstChild);
   }
@@ -153,81 +168,62 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
 
   const category = getCategoryFromChannel(channel);
   div.setAttribute("data-category", category);
-
   const color = getChannelColor(category);
 
-  // Cache the search text immediately (Lowercase)
-  // We attach it to the DOM object directly to avoid DOM reads later
   div._searchText = `[${channel}] ${author} ${message}`.toLowerCase();
 
-  // --- FILTERING LOGIC ---
-  let isChannelVisible = false;
-
+  let isVisible = true;
   if (currentChatFilter === "all") {
-    // In ALL mode: Show everything EXCEPT logs
-    if (category !== "logs") {
-      isChannelVisible = true;
-    }
+    if (category === "logs") isVisible = false;
   } else {
-    // In Specific Modes:
-    // A. Match exact category
-    if (category === currentChatFilter) {
-      isChannelVisible = true;
-    }
-    // B. Show Vicinity/Private unless we are in 'logs' mode
-    else if (
+    const isExact = category === currentChatFilter;
+    const isExc =
       currentChatFilter !== "logs" &&
-      (category === "vicinity" || category === "private")
-    ) {
-      isChannelVisible = true;
-    }
+      (category === "vicinity" || category === "private");
+    if (!isExact && !isExc) isVisible = false;
   }
 
-  // Text Search Check
-  let isTextMatch = true;
   if (
     typeof currentChatSearchTerm !== "undefined" &&
     currentChatSearchTerm.trim() !== ""
   ) {
-    if (!div._searchText.includes(currentChatSearchTerm)) {
-      isTextMatch = false;
-    }
+    if (!div._searchText.includes(currentChatSearchTerm)) isVisible = false;
   }
 
-  // Use CSS Class for visibility
-  if (!isChannelVisible || !isTextMatch) {
-    div.classList.add("hidden-msg");
+  if (!isVisible) div.classList.add("hidden-msg");
+
+  let displayMessage = message;
+  const lowerChan = channel.toLowerCase();
+
+  if (lowerChan.includes("game log")) {
+    displayMessage = formatGameLog(message);
+  } else if (
+    lowerChan.includes("fight log") ||
+    lowerChan.includes("combat") ||
+    lowerChan.includes("lutas") ||
+    lowerChan.includes("information")
+  ) {
+    displayMessage = formatFightLog(message);
   }
-  // -----------------------
 
   const transId =
     "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
-  let displayMessage = message;
-  if (
-    channel.toLowerCase().includes("log") ||
-    channel.toLowerCase().includes("info")
-  ) {
-    displayMessage = message.replace(
-      /(?:\+|-)?\d+(?:[.,]\d+)*/g,
-      '<span class="game-log-number">$&</span>'
-    );
-  }
-
   div.innerHTML = `
-        <div class="chat-meta">
-            <span class="chat-time">${time}</span>
-            <span class="chat-channel" style="color:${color}">${channelTag}</span>
-            <span class="chat-author" style="color:${color}">${author}</span>
-            <button class="manual-trans-btn" onclick="queueTranslation('${message.replace(
-              /'/g,
-              "\\'"
-            )}', '${transId}', true)">T</button>
-        </div>
-        <div class="chat-content">${displayMessage}</div>
-        <div id="${transId}" class="translated-block" style="display:none;"></div>
-    `;
+    <div class="chat-meta">
+      <span class="chat-time">${time}</span>
+      <span class="chat-channel" style="color:${color}">${channelTag}</span>
+      <span class="chat-author" style="color:${color}">${author}</span>
+      <button class="manual-trans-btn"
+        onclick="queueTranslation('${message.replace(
+          /'/g,
+          "\\'"
+        )}', '${transId}', true)">T</button>
+    </div>
+    <div class="chat-content">${displayMessage}</div>
+    <div id="${transId}" class="translated-block" style="display:none;"></div>
+  `;
 
   chatList.appendChild(div);
   chatList.scrollTop = chatList.scrollHeight;
@@ -235,6 +231,108 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   if (transConfig.enabled && !skipAuto) {
     queueTranslation(message, transId, false);
   }
+}
+
+function formatGameLog(message) {
+  let formatted = message;
+  let isKama = false;
+
+  // Matches: 10 kamas | 10,000 kamas | 10 000 kamas | NBSP safe
+  const kamaRegex = /(\d+(?:[.,\s\u00A0]\d+)*)([\s\u00A0]+)(kamas?)/gi;
+
+  if (kamaRegex.test(formatted)) {
+    isKama = true;
+    formatted = formatted.replace(kamaRegex, (match, num, space, word) => {
+      return `<span class="kama-log">${num}</span>${space}<span class="kama-log">${word}</span>`;
+    });
+  }
+
+  // Apply red numbers ONLY if not kamas
+  if (!isKama && typeof LOOT_KEYWORDS !== "undefined") {
+    if (LOOT_KEYWORDS.some((kw) => message.toLowerCase().includes(kw))) {
+      formatted = formatted.replace(
+        /(?<!>)\b(\d+(?:[.,]\d+)*\s*x?)\b(?![^<]*<\/span>)/g,
+        '<span class="loot-log">$1</span>'
+      );
+    }
+  }
+
+  formatted = formatted.replace(/"([^"<]+)"(?![^<]*>)/g, '"<b>$1</b>"');
+
+  return formatted;
+}
+
+function formatFightLog(message) {
+  let formatted = message;
+  const lower = message.toLowerCase();
+
+  // Map patterns to CSS Class + Icon Filename
+  const elementMap = {
+    "Fire|Feu|Fuego|Fogo": { cls: "dmg-fire", icon: "sFIRE.png" },
+    "Air|Aire|Ar": { cls: "dmg-air", icon: "sAIR.png" },
+    "Earth|Terre|Tierra|Terra": { cls: "dmg-earth", icon: "sEARTH.png" },
+    "Water|Eau|Agua|Água": { cls: "dmg-water", icon: "sWATER.png" },
+    "Light|Lumière|Luz": { cls: "dmg-light", icon: "sLIGHT.png" },
+    "Stasis|Stase|Estasis|Estase": { cls: "dmg-stasis", icon: "sSTASIS.png" },
+  };
+
+  // 1. Full Elemental Damage
+  // Regex: Number, Unit, (Element)
+  // Reconstructs: [Colored Number] [Space] [Hidden Text] [Icon]
+  for (const [pattern, data] of Object.entries(elementMap)) {
+    const regex = new RegExp(
+      `(-\\s?[\\d,.]+)\\s+(HP|PV|PdV)\\s+\\(\\s*((?:${pattern}))\\s*\\)`,
+      "gi"
+    );
+
+    formatted = formatted.replace(
+      regex,
+      (match, dmgPart, unitPart, elementWord) => {
+        // Added space after </span>
+        return (
+          `<span class="${data.cls}">${dmgPart} ${unitPart}</span> ` +
+          `<span class="copy-only">(${elementWord})</span>` +
+          `<img src="./assets/img/elements/${data.icon}" class="element-icon" alt="">`
+        );
+      }
+    );
+  }
+
+  // 2. Neutral Damage
+  // Reconstructs: [Red Number] [Space] [Neutral Icon]
+  formatted = formatted.replace(
+    /(?<!>)(-\s?[\d,.]+)\s(HP|PV|PdV)(?!\s*<span)(?!\s*<img)(?![^<]*<\/span>)/g,
+    `<span class="game-log-number">$1 $2</span> <img src="./assets/img/elements/sNEUTRAL.png" class="element-icon" alt="">`
+  );
+
+  // 3. Standalone Elements
+  for (const [pattern, data] of Object.entries(elementMap)) {
+    const simpleRegex = new RegExp(
+      `(?<!>)\\(\\s*((?:${pattern}))\\s*\\)`,
+      "gi"
+    );
+    formatted = formatted.replace(simpleRegex, (match, elementWord) => {
+      return `<span class="copy-only">(${elementWord})</span><img src="./assets/img/elements/${data.icon}" class="element-icon" alt="">`;
+    });
+  }
+
+  // 4. Level/XP Numbers
+  if (
+    lower.includes("level") ||
+    lower.includes("lvl") ||
+    lower.includes("niveau") ||
+    lower.includes("nivel")
+  ) {
+    formatted = formatted.replace(
+      /(?<!>)(?:\+|-)?\b\d+(?:[.,]\d+)*\b(?![^<]*>)/g,
+      '<span class="game-log-number">$&</span>'
+    );
+  }
+
+  // 5. Parentheses Bolding
+  formatted = formatted.replace(/\(([^<>()]+)\)/g, "(<b>$1</b>)");
+
+  return formatted;
 }
 
 function onChatSearchInput(val) {
@@ -416,22 +514,6 @@ function getCategoryFromChannel(channelName) {
   return "other";
 }
 
-function getChannelColor(category) {
-  const map = {
-    logs: "#bbbbbb", // Grey for logs
-    vicinity: CHAT_COLORS.Vicinity,
-    private: CHAT_COLORS.Private,
-    group: CHAT_COLORS.Group,
-    guild: CHAT_COLORS.Guild,
-    trade: CHAT_COLORS.Trade,
-    politics: CHAT_COLORS.Politics,
-    pvp: CHAT_COLORS.PvP,
-    community: CHAT_COLORS.Community,
-    recruitment: CHAT_COLORS.Recruitment,
-  };
-  return map[category] || CHAT_COLORS.Default;
-}
-
 function queueTranslation(text, elementId, isManual) {
   translationQueue.push({ text, elementId, isManual });
   processTranslationQueue();
@@ -538,19 +620,6 @@ async function fetchTranslation(text) {
   }
   return null;
 }
-
-const CHAT_COLORS = {
-  Vicinity: "#cccccc",
-  Private: "#00e1ff",
-  Group: "#aa66ff",
-  Guild: "#ffaa00",
-  Trade: "#dd7700",
-  Politics: "#ffff00",
-  PvP: "#00aaaa",
-  Community: "#3366ff",
-  Recruitment: "#ff2255",
-  Default: "#888888",
-};
 
 // QUICK TRANSLATOR LOGIC
 function openQuickTransModal() {

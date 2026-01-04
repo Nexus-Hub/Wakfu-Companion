@@ -713,7 +713,14 @@
     <!-- LEFT SIDEBAR FOR PROFESSIONS -->
     <div id="professions-sidebar" class="sidebar left-sidebar">
       <div class="sidebar-header">
-        <h3>Crafting Professions Calculator</h3>
+        <h3>
+          <img
+            src="./assets/img/headers/professions.png"
+            class="sidebar-header-icon"
+            onerror="this.style.display='none'"
+          />
+          Crafting XP Calculator
+        </h3>
         <button class="close-sidebar-btn" onclick="toggleProfSidebar()">
           ×
         </button>
@@ -791,7 +798,13 @@
     <!-- SIDEBAR FOR MISSIONS & RELICS -->
     <div id="info-sidebar" class="sidebar">
       <div class="sidebar-header">
-        <h3>Quick Info</h3>
+        <h3>
+          <img
+            src="./assets/img/headers/quick_info.png"
+            class="sidebar-header-icon"
+          />
+          Quick Info
+        </h3>
         <button class="close-sidebar-btn" onclick="toggleSidebar()">×</button>
       </div>
 
@@ -957,7 +970,14 @@
     <!-- NEW: DEDICATED DUNGEON FORECAST SIDEBAR -->
     <div id="dungeon-sidebar" class="sidebar">
       <div class="sidebar-header">
-        <h3>Dungeon Forecast</h3>
+        <h3>
+          <img
+            src="./assets/img/headers/dungeon_forecast.png"
+            class="sidebar-header-icon"
+            onerror="this.style.display='none'"
+          />
+          Dungeon Forecast
+        </h3>
         <button class="close-sidebar-btn" onclick="toggleDungeonSidebar()">
           ×
         </button>
@@ -1058,7 +1078,7 @@
         <span
           class="footer-btn"
           onclick="toggleProfSidebar()"
-          style="margin-right: 15px"
+          style="margin-right: 10px"
           >PROFESSIONS</span
         >
 
@@ -1066,11 +1086,128 @@
         <span
           class="footer-btn"
           onclick="toggleDungeonSidebar()"
-          style="margin-right: 15px"
+          style="margin-right: 10px"
           >DAILY DUNGEONS</span
         >
 
-        <span class="footer-btn" onclick="toggleSidebar()">QUICK INFO</span>
+        <span
+          class="footer-btn"
+          onclick="toggleSidebar()"
+          style="margin-right: 10px"
+          >QUICK INFO</span
+        >
+
+        <span class="footer-btn" onclick="toggleSessionWindow()"
+          >SESSION RECAP</span
+        >
+      </div>
+    </div>
+
+    <!-- Session Recap -->
+    <div
+      id="session-window"
+      class="floating-window session-window-init"
+      style="display: none"
+    >
+      <div class="modal-header draggable-header" id="session-drag-handle">
+        <div class="session-header-group">
+          <img
+            src="./assets/img/headers/sessionRecap.png"
+            class="sidebar-header-icon"
+            onerror="this.style.display='none'"
+          />
+          <h3>SESSION RECAP</h3>
+        </div>
+        <button class="close-modal" onclick="toggleSessionWindow()">×</button>
+      </div>
+
+      <div class="modal-body session-modal-body">
+        <!-- TIMER SECTION -->
+        <div class="session-timer-container">
+          <span class="stat-label">Duration:</span>
+          <span id="sess-current-duration" class="stat-val text-accent"
+            >00:00:00</span
+          >
+        </div>
+        <!-- XP SECTION -->
+        <div class="session-section">
+          <div class="session-header-row">
+            <img
+              src="assets/img/headers/xp.png"
+              class="session-icon"
+              onerror="this.style.display='none'"
+            />
+            <h4>EXPERIENCE</h4>
+          </div>
+          <div id="session-xp-list">
+            <div class="empty-state-mini">No XP gained yet.</div>
+          </div>
+        </div>
+
+        <!-- KAMAS SECTION -->
+        <div class="session-section">
+          <div class="session-header-row">
+            <img
+              src="assets/img/headers/kamas.png"
+              class="session-icon"
+              onerror="this.style.display='none'"
+            />
+            <h4>KAMAS</h4>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Earned:</span>
+            <span id="sess-kamas-earned" class="stat-val positive">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Spent:</span>
+            <span id="sess-kamas-spent" class="stat-val negative">0</span>
+          </div>
+          <div class="stat-row net-row">
+            <span class="stat-label">Net:</span>
+            <span id="sess-kamas-net" class="stat-val">0</span>
+          </div>
+        </div>
+
+        <!-- CHALLENGES SECTION -->
+        <div class="session-section">
+          <div class="session-header-row">
+            <img
+              src="assets/img/headers/challenges.png"
+              class="session-icon"
+              onerror="this.style.display='none'"
+            />
+            <h4>CHALLENGES</h4>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Completed:</span>
+            <span id="sess-challenges-count" class="stat-val text-accent"
+              >0</span
+            >
+          </div>
+        </div>
+
+        <!-- QUESTS SECTION -->
+        <div class="session-section last-section">
+          <div class="session-header-row">
+            <img
+              src="assets/img/headers/quest.png"
+              class="session-icon"
+              onerror="this.style.display='none'"
+            />
+            <h4>QUESTS</h4>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Completed:</span>
+            <span id="sess-quests-count" class="stat-val text-accent">0</span>
+          </div>
+        </div>
+
+        <button
+          onclick="resetSessionStats()"
+          class="add-track-btn session-reset-btn"
+        >
+          RESET SESSION
+        </button>
       </div>
     </div>
 
@@ -1159,6 +1296,7 @@
     <script src="assets/js/data/forecast_data.js"></script>
 
     <!-- Modules -->
+    <script src="assets/js/modules/sessionRecap.js"></script>
     <script src="assets/js/modules/state.js"></script>
     <script src="assets/js/modules/utils.js"></script>
     <script src="assets/js/modules/filesystem.js"></script>

@@ -698,7 +698,7 @@ function processLine(line) {
 
   const lineLower = line.toLowerCase();
 
-  // EXPLICIT SYSTEM CHECK: Requires the [Bracket Tag] AND the message
+  // EXPLICIT SYSTEM CHECK
   const systemEndPattens = [
     { tag: "[fight log]", msg: "fight is over" },
     { tag: "[information (combat)]", msg: "le combat est terminé" },
@@ -706,10 +706,13 @@ function processLine(line) {
     { tag: "[registro de lutas]", msg: "a luta terminou" },
   ];
 
-  // Logic for flagging that the battle ended (System only)
   const battleJustFinished = systemEndPattens.some(
     (p) => lineLower.includes(p.tag) && lineLower.includes(p.msg)
   );
+
+  if (typeof processSessionLog === "function") {
+    processSessionLog(line);
+  }
 
   if (battleJustFinished) {
     saveFightToHistory();
@@ -717,7 +720,6 @@ function processLine(line) {
     updateWatchdogUI();
   }
 
-  // Handle Log deduplication
   if (logLineCache.has(line)) return;
   logLineCache.add(line);
   if (logLineCache.size > MAX_CACHE_SIZE) {
@@ -726,7 +728,6 @@ function processLine(line) {
   }
 
   try {
-    // 1. DATA LOGIC (Update Stats/Tracker)
     const isLoot = LOOT_KEYWORDS.some((kw) => lineLower.includes(kw));
     const isCombat =
       lineLower.includes("[fight log]") ||
@@ -740,34 +741,10 @@ function processLine(line) {
       processFightLog(line);
     }
 
-    // 2. UI LOGIC (Update Chat Window)
     if (line.match(/^\d{2}:\d{2}:\d{2}/)) {
       processChatLog(line);
     }
   } catch (err) {
     console.error("Parsing Error:", err);
   }
-}
-
-async function startTracking(handle) {
-  await saveFileHandleToDB(handle);
-
-  document.getElementById("setup-panel").style.display = "none";
-  activeFilename.textContent = handle.name;
-  liveIndicator.style.display = "inline-block";
-
-  performReset(true);
-  chatList.innerHTML =
-    '<div class="empty-state">Waiting for chat logs...</div>';
-
-  try {
-    const file = await handle.getFile();
-    fileOffset = file.size;
-  } catch (e) {
-    fileOffset = 0;
-  }
-
-  if (parseIntervalId) clearInterval(parseIntervalId);
-  parseIntervalId = setInterval(parseFile, 1000);
-  startWatchdog();
 }

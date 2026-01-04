@@ -50,10 +50,18 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(updateDailyTimer, 60000);
 
   // 5. Draggable Windows
+  // --- Quick Translate Window Drag ---
   const qtWindow = document.getElementById("quick-trans-modal");
   const qtHandle = document.getElementById("qt-drag-handle");
   if (qtWindow && qtHandle) {
     makeDraggable(qtWindow, qtHandle); // utils.js
+  }
+
+  // --- Session Window Drag ---
+  const sessWindow = document.getElementById("session-window");
+  const sessHandle = document.getElementById("session-drag-handle");
+  if (sessWindow && sessHandle) {
+    makeDraggable(sessWindow, sessHandle);
   }
 });
 
@@ -151,3 +159,36 @@ autoResetBtn.addEventListener("click", () => {
   autoResetBtn.classList.toggle("active", isAutoResetOn);
   updateWatchdogUI(); // ui.js
 });
+
+window.startSessionTimer = startSessionTimer;
+
+async function startTracking(handle) {
+  await saveFileHandleToDB(handle);
+
+  document.getElementById("setup-panel").style.display = "none";
+  activeFilename.textContent = handle.name;
+  liveIndicator.style.display = "inline-block";
+
+  performReset(true);
+
+  // Start Session Timer immediately on file load
+  if (typeof window.startSessionTimer === "function") {
+    window.startSessionTimer();
+  } else if (typeof startSessionTimer === "function") {
+    startSessionTimer();
+  }
+
+  chatList.innerHTML =
+    '<div class="empty-state">Waiting for chat logs...</div>';
+
+  try {
+    const file = await handle.getFile();
+    fileOffset = file.size;
+  } catch (e) {
+    fileOffset = 0;
+  }
+
+  if (parseIntervalId) clearInterval(parseIntervalId);
+  parseIntervalId = setInterval(parseFile, 1000);
+  startWatchdog();
+}
