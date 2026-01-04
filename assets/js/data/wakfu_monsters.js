@@ -2510,7 +2510,7 @@ let wakfuMonsters = [
     nameFR: "Bilbygirl Citron",
     nameES: "Bilbygirl de limón",
     namePT: "Bilbygirl de limão",
-    imgId: "11.png",
+    imgId: "12.png",
   },
   {
     nameEN: "Frozenhorn Brrrbli",
@@ -2524,13 +2524,13 @@ let wakfuMonsters = [
     nameFR: "Bilbyboy Fraise",
     nameES: "Bilbyboy de fresa",
     namePT: "Bilbyboy de morango",
-    imgId: "10.png",
+    imgId: "13.png",
   },
   {
-    nameEN: "",
+    nameEN: "Neo Prowling Spirit",
     nameFR: "Néo-Esprit Rôdeur",
-    nameES: "",
-    namePT: "",
+    nameES: "Neoespíritu merodeador",
+    namePT: "Neo-Espírito Vagante",
     imgId: "1115705815.png",
   },
   {
