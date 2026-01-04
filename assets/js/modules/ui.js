@@ -1,5 +1,5 @@
 function renderMeter() {
-  // MEMORY OPTIMIZATION: Prune icon cache if it gets too large
+  // Prune icon cache if it gets too large
   if (Object.keys(playerIconCache).length > 100) {
     playerIconCache = {}; // Flush cache to release string memory
   }
@@ -88,7 +88,7 @@ function renderMeter() {
 
     const maxVal = list[0].total;
 
-    // MEMORY OPTIMIZATION: Use DocumentFragment for batch DOM insertion
+    // Use DocumentFragment for batch DOM insertion
     const fragment = document.createDocumentFragment();
 
     list.forEach((p) => {

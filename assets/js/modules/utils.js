@@ -166,9 +166,7 @@ async function togglePiP(elementId, title) {
 
   // Check for browser support
   if (!("documentPictureInPicture" in window)) {
-    alert(
-      "Your browser does not support Document Picture-in-Picture. Please use the latest version of Chrome, Edge, or Opera."
-    );
+    alert("Your browser does not support Document Picture-in-Picture.");
     return;
   }
 
@@ -178,7 +176,9 @@ async function togglePiP(elementId, title) {
       height: 500,
     });
 
-    // Copy Global Functions to PiP Window so buttons work
+    // --- FUNCTION BRIDGING ---
+
+    // UI / Utilities
     pipWindow.switchMeterMode = window.switchMeterMode;
     pipWindow.toggleIconVariant = window.toggleIconVariant;
     pipWindow.modifyExpansion = window.modifyExpansion;
@@ -186,7 +186,12 @@ async function togglePiP(elementId, title) {
     pipWindow.updateTooltipPosition = window.updateTooltipPosition;
     pipWindow.hideTooltip = window.hideTooltip;
 
-    // Copy Styles from the main document to the PiP document
+    // Tracker Functions
+    pipWindow.removeTrackedItem = window.removeTrackedItem;
+    pipWindow.openTrackerModal = window.openTrackerModal;
+    pipWindow.updateItemValue = window.updateItemValue;
+
+    // Copy Styles
     [...document.styleSheets].forEach((styleSheet) => {
       try {
         if (styleSheet.cssRules) {
