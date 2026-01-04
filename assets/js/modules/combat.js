@@ -132,14 +132,22 @@ function processFightLog(line) {
       finalCaster = target;
     }
 
-    // HEAL SAFEGUARD: Ally healing Enemy? -> Probably Boss Mechanic (Self Heal)
+    // HEAL SAFEGUARD & MECHANIC DETECTION
     if (sign === "+") {
       const casterIsAlly = finalCaster && isPlayerAlly({ name: finalCaster });
       const targetIsAlly = isPlayerAlly({ name: target });
 
+      // 1. Ally healing Enemy? -> Boss Mechanic (Self Heal)
       if (casterIsAlly && !targetIsAlly) {
         finalCaster = target;
         if (!spellOverride) spellOverride = "Mechanic / Passive";
+      }
+      // 2. Enemy healing Enemy? -> Check if it's a spell or a mechanic
+      if (!casterIsAlly && !targetIsAlly && finalCaster !== target) {
+        const spellNameToCheck = spellOverride || currentSpell;
+        if (spellNameToCheck && !spellToClassMap[spellNameToCheck]) {
+          finalCaster = target;
+        }
       }
     }
 
