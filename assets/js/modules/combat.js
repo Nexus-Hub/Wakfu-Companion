@@ -558,25 +558,22 @@ function initMonsterDatabase() {
   if (typeof wakfuMonsters === "undefined") return;
 
   monsterLookup = {};
-  wakfuMonsters.forEach((m) => {
-    // Map every language version of the name to the imgId
-    // Optimization: Intern strings by using the same reference where possible
+
+  // Create Lookup Table
+  const len = wakfuMonsters.length;
+  for (let i = 0; i < len; i++) {
+    const m = wakfuMonsters[i];
     const img = m.imgId;
+    // Optimization: Low-level assign is faster than forEach on keys
     if (m.nameEN) monsterLookup[m.nameEN.toLowerCase()] = img;
     if (m.nameFR) monsterLookup[m.nameFR.toLowerCase()] = img;
     if (m.nameES) monsterLookup[m.nameES.toLowerCase()] = img;
     if (m.namePT) monsterLookup[m.namePT.toLowerCase()] = img;
-  });
-
-  // MEMORY OPTIMIZATION:
-  // Try to clear the massive source array to free RAM.
-  // Note: This only works if 'wakfuMonsters' is declared with 'let' or 'var' in wakfu_monsters.js.
-  // If it is 'const', this will fail silently (caught by the block below).
-  try {
-    wakfuMonsters = null;
-  } catch (e) {
-    // Silently fail if wakfuMonsters is const
   }
+
+  // Delete the massive source array from memory
+  wakfuMonsters = null;
+  delete window.wakfuMonsters;
 }
 
 function loadFightHistory() {
@@ -643,21 +640,26 @@ async function parseFile() {
 
   try {
     const file = await fileHandle.getFile();
-
-    // If we read successfully, reset the error counter immediately
     permissionStrikeCount = 0;
 
     if (file.size > fileOffset) {
-      const blob = file.slice(fileOffset, file.size);
-      const text = await blob.text();
+      // optimization: slice only what we need
+      const chunk = file.slice(fileOffset, file.size);
+      const text = await chunk.text();
+
+      // Memory Optimization: Process line by line without creating a massive array of strings if possible
+      // But split is usually fast enough. We strictly nullify afterwards.
       const lines = text.split(/\r?\n/);
 
-      // Process lines
-      lines.forEach(processLine);
+      // Cache length for loop performance
+      const len = lines.length;
+      for (let i = 0; i < len; i++) {
+        processLine(lines[i]);
+      }
 
       fileOffset = file.size;
 
-      // Update UI
+      // UPDATE: Only render if data actually changed (Handled in ui.js now)
       if (typeof renderMeter === "function") renderMeter();
 
       if (typeof trackerDirty !== "undefined" && trackerDirty) {
@@ -665,36 +667,21 @@ async function parseFile() {
         renderTracker();
         trackerDirty = false;
       }
+
+      // Explicit Cleanup for GC
+      lines.length = 0;
     }
   } catch (err) {
-    // Handle Permission/Read Errors
     if (err.name === "NotReadableError" || err.message.includes("permission")) {
       permissionStrikeCount++;
-
-      // STRIKE SYSTEM: Only stop if we failed 10 times in a row (~10 seconds)
       if (permissionStrikeCount >= 10) {
-        console.error(
-          "Nexus Wakfu: Persistent permission loss. Stopping reader."
-        );
-
-        if (typeof parseIntervalId !== "undefined") {
-          clearInterval(parseIntervalId);
-          parseIntervalId = null;
-        }
-
-        // Show Reconnect UI
-        const setupPanel = document.getElementById("setup-panel");
-        const dropZone = document.getElementById("drop-zone");
-        const reconnectContainer = document.getElementById(
-          "reconnect-container"
-        );
-
-        if (setupPanel) setupPanel.style.display = "block";
-        if (dropZone) dropZone.style.display = "none";
-        if (reconnectContainer) reconnectContainer.style.display = "block";
+        if (parseIntervalId) clearInterval(parseIntervalId);
+        document.getElementById("setup-panel").style.display = "block";
+        document.getElementById("drop-zone").style.display = "none";
+        document.getElementById("reconnect-container").style.display = "block";
       }
     } else {
-      console.error("File Read Error:", err);
+      console.error(err);
     }
   } finally {
     isReading = false;

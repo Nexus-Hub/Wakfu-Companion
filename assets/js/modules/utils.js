@@ -354,3 +354,24 @@ function getUI(id) {
   }
   return document.getElementById(id);
 }
+
+// --- Lazy Loader Utility ---
+const loadedScripts = new Set();
+
+function loadScript(path) {
+  return new Promise((resolve, reject) => {
+    if (loadedScripts.has(path)) {
+      resolve(); // Already loaded
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = path;
+    script.onload = () => {
+      loadedScripts.add(path);
+      resolve();
+    };
+    script.onerror = () => reject(`Failed to load script: ${path}`);
+    document.body.appendChild(script);
+  });
+}
