@@ -16,7 +16,6 @@ function renderMeter() {
     const snapshot = fightHistory[currentViewIndex];
     if (!snapshot) return;
     sourceFight = snapshot.damage;
-    // Fallbacks for history structure
     sourceClasses = snapshot.classes || {};
     sourceOverrides = snapshot.overrides || {};
     const ind = document.getElementById("live-indicator");
@@ -40,7 +39,7 @@ function renderMeter() {
 
   const players = Object.values(dataSet);
 
-  // --- MEMORY OPTIMIZATION ---
+  // --- MEMORY OPTIMIZATION: DIRTY CHECK ---
   const totalGlobal = players.reduce((acc, p) => acc + p.total, 0);
   const currentSignature = `${currentViewIndex}-${activeMeterMode}-${players.length}-${totalGlobal}-${expandedPlayers.size}`;
 
@@ -48,8 +47,9 @@ function renderMeter() {
     return;
   }
   lastRenderSignature = currentSignature;
+  // ----------------------------------------
 
-  // Prune cache if too large (prevent memory creep)
+  // Prune cache if too large
   if (Object.keys(playerIconCache).length > 100) {
     playerIconCache = {};
   }
@@ -93,7 +93,6 @@ function renderMeter() {
   enemies.sort((a, b) => b.total - a.total);
 
   const renderList = (list, container, categoryTotal) => {
-    // Fast clear
     container.textContent = "";
 
     if (list.length === 0) {
@@ -119,23 +118,32 @@ function renderMeter() {
       // Icon Generation (Cached)
       if (currentViewIndex !== "live" || !iconHtml) {
         const lowerName = p.name.toLowerCase().trim();
-        const monsterImgId = monsterLookup[lowerName];
+        // Lookup monster ID
+        let monsterImgId = monsterLookup[lowerName];
 
         if (monsterImgId) {
-          iconHtml = `<img src="././assets/img/monsters/${monsterImgId}" class="class-icon" onerror="this.src='././assets/img/classes/not_found.png';">`;
+          // FIX: Ensure extension exists
+          if (!String(monsterImgId).endsWith(".png")) {
+            monsterImgId += ".png";
+          }
+
+          // MONSTER FOUND
+          iconHtml = `<img src="./assets/img/monsters/${monsterImgId}" class="class-icon" onerror="this.src='./assets/img/resources/not_found.png';">`;
         } else {
+          // PLAYER CLASS
           const classIconName = sourceClasses[p.name];
           if (classIconName) {
             const isAlt = playerVariantState[p.name];
             const currentSrc = isAlt
-              ? `././assets/img/classes/${classIconName}-f.png`
-              : `././assets/img/classes/${classIconName}.png`;
+              ? `./assets/img/classes/${classIconName}-f.png`
+              : `./assets/img/classes/${classIconName}.png`;
             iconHtml = `<img src="${currentSrc}" class="class-icon player-icon-img" data-name="${p.name.replace(
               /"/g,
               "&quot;"
-            )}" onerror="this.src='././assets/img/classes/not_found.png';">`;
+            )}" onerror="this.src='./assets/img/classes/not_found.png';">`;
           } else {
-            iconHtml = `<img src="././assets/img/classes/not_found.png" class="class-icon">`;
+            // UNKNOWN ENTITY
+            iconHtml = `<img src="./assets/img/classes/not_found.png" class="class-icon">`;
           }
         }
         if (currentViewIndex === "live") playerIconCache[p.name] = iconHtml;
@@ -144,7 +152,7 @@ function renderMeter() {
       // ROW CONSTRUCTION
       const rowBlock = document.createElement("div");
       rowBlock.className = `player-block ${isExpanded ? "expanded" : ""}`;
-      rowBlock.dataset.name = p.name; // Store name for delegation
+      rowBlock.dataset.name = p.name;
       rowBlock.setAttribute("draggable", "true");
 
       let barClass =
@@ -160,7 +168,6 @@ function renderMeter() {
           ? "healing-text"
           : "armor-text";
 
-      // Inner HTML
       rowBlock.innerHTML = `
         <div class="player-row">
             <div class="player-bg-bar ${barClass}" style="width: ${barPercent}%"></div>
@@ -172,12 +179,10 @@ function renderMeter() {
         </div>
       `;
 
-      // Spells (if expanded)
       if (isExpanded) {
         const spellContainer = document.createElement("div");
         spellContainer.className = "spell-list open";
 
-        // Sort spells (optimize: do this once)
         const spells = Object.entries(p.spells)
           .map(([key, data]) => ({
             val: data.val,
@@ -186,7 +191,6 @@ function renderMeter() {
           }))
           .sort((a, b) => b.val - a.val);
 
-        // Batch spell HTML generation
         let spellsHtml = "";
         for (let j = 0; j < spells.length; j++) {
           const s = spells[j];
@@ -199,7 +203,7 @@ function renderMeter() {
                 <div class="spell-row">
                     <div class="spell-bg-bar" style="width: ${spellBarPercent}%"></div>
                     <div class="spell-info">
-                        <img src="././assets/img/elements/${iconName}.png" class="spell-icon" onerror="this.src='././assets/img/elements/neutral.png'">
+                        <img src="./assets/img/elements/${iconName}.png" class="spell-icon" onerror="this.src='./assets/img/elements/neutral.png'">
                         <span class="spell-name">${s.realName}</span>
                     </div>
                     <div class="spell-val">${s.val.toLocaleString()}</div>

@@ -35,6 +35,11 @@ document.addEventListener("DOMContentLoaded", () => {
   loadFightHistory(); // combat.js
   initForecast(); // forecast.js
 
+  // Restore Live Combat Data (Persistence)
+  if (typeof loadLiveCombatState === "function") {
+    loadLiveCombatState();
+  }
+
   // 2. Data Preparation
   initMonsterDatabase(); // combat.js
   generateSpellMap(); // combat.js
@@ -49,28 +54,30 @@ document.addEventListener("DOMContentLoaded", () => {
   // 4. Background Tasks
   setInterval(updateDailyTimer, 60000);
 
+  // Memory Maintenance
+  if (typeof startMaintenanceRoutine === "function") {
+    startMaintenanceRoutine();
+  }
+
   // 5. Draggable Windows
-  // --- Quick Translate Window Drag ---
   const qtWindow = document.getElementById("quick-trans-modal");
   const qtHandle = document.getElementById("qt-drag-handle");
   if (qtWindow && qtHandle) {
     makeDraggable(qtWindow, qtHandle); // utils.js
   }
 
-  // --- Session Window Drag ---
   const sessWindow = document.getElementById("session-window");
   const sessHandle = document.getElementById("session-drag-handle");
   if (sessWindow && sessHandle) {
     makeDraggable(sessWindow, sessHandle);
   }
-
-  startMaintenanceRoutine();
 });
 
 // --- EVENT LISTENERS ---
 
 // 1. File Drop Logic
 dropZone.addEventListener("dragover", (e) => e.preventDefault());
+
 dropZone.addEventListener("drop", async (e) => {
   e.preventDefault();
   const items = e.dataTransfer.items;
@@ -80,15 +87,16 @@ dropZone.addEventListener("drop", async (e) => {
       const handle = await items[0].getAsFileSystemHandle();
       const fileName = handle.name.toLowerCase();
 
-      // STRICT CHECK: Only allow the specific log file
       if (fileName !== "wakfu_chat.log") {
         alert("❌ Incorrect file.\nPlease only drop 'wakfu_chat.log'.");
         return;
       }
 
-      // If valid, start tracking
+      // NEW: Force a reset if dragging a new file (ignores restored data)
+      window.isRestoredSession = false;
+
       fileHandle = handle;
-      await startTracking(fileHandle); // parser.js
+      await startTracking(fileHandle);
     } catch (err) {
       console.error(err);
       alert("Error reading file. Please try again.");
@@ -171,13 +179,17 @@ async function startTracking(handle) {
   activeFilename.textContent = handle.name;
   liveIndicator.style.display = "inline-block";
 
-  performReset(true);
+  // Only reset if this ISN'T a restored session
+  if (window.isRestoredSession) {
+    window.isRestoredSession = false; // Consume flag
+    renderMeter(); // Ensure UI matches data
+  } else {
+    performReset(true);
+  }
 
-  // Start Session Timer immediately on file load
+  // Start Session Timer (for Session Recap)
   if (typeof window.startSessionTimer === "function") {
-    window.startSessionTimer();
-  } else if (typeof startSessionTimer === "function") {
-    startSessionTimer();
+    window.startSessionTimer(); // This function inside sessionRecap handles its own persistence checks
   }
 
   chatList.innerHTML =
@@ -201,11 +213,6 @@ function startMaintenanceRoutine() {
     // 1. Clear Parser Cache
     if (typeof logLineCache !== "undefined") {
       logLineCache.clear();
-    }
-
-    // 2. Clear Icon Cache (Forces regeneration of strings)
-    if (typeof playerIconCache !== "undefined") {
-      playerIconCache = {};
     }
   }, 300000); // Every 5 minutes
 }

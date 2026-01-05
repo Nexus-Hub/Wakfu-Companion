@@ -283,27 +283,40 @@ function saveFightToHistory() {
 }
 
 function performReset(isAuto = false) {
-  // 1. Try to save (Will be skipped if hasUnsavedChanges is false, e.g. fight just ended)
+  // 1. Save to history before clearing
   saveFightToHistory();
 
   // 2. Clear Live Data
   fightData = {};
   healData = {};
   armorData = {};
+  // Note: We intentionally keep playerClasses and manualOverrides to preserve config
 
   // 3. Reset State
   currentCaster = "Unknown";
   currentSpell = "Unknown Spell";
   awaitingNewFight = false;
-  hasUnsavedChanges = false; // Reset the dirty flag
+  hasUnsavedChanges = false;
+  fightStartTime = null;
 
-  // 4. Force view back to LIVE on reset
+  // 4. CLEAR STORAGE (Critical update)
+  localStorage.removeItem("wakfu_live_combat_state");
+
+  // 5. Reset Views
   currentViewIndex = "live";
   updateHistoryButtons();
 
   renderMeter();
   updateWatchdogUI();
 }
+
+// Auto-save when closing the page/tab
+window.addEventListener("beforeunload", () => {
+  saveLiveCombatState();
+});
+
+// Export for main.js
+window.loadLiveCombatState = loadLiveCombatState;
 
 function mergeSummonData(summon, master) {
   // We iterate through all 3 categories: damage, healing, and armor
@@ -725,5 +738,53 @@ function processLine(line) {
     }
   } catch (err) {
     console.error("Parsing Error:", err);
+  }
+}
+
+function saveLiveCombatState() {
+  // Only save if there is actual data
+  if (Object.keys(fightData).length === 0 && Object.keys(healData).length === 0)
+    return;
+
+  const state = {
+    fightData,
+    healData,
+    armorData,
+    playerClasses,
+    manualOverrides,
+    summonBindings,
+    fightStartTime,
+    awaitingNewFight, // Save the watchdog state too
+  };
+  localStorage.setItem("wakfu_live_combat_state", JSON.stringify(state));
+}
+
+function loadLiveCombatState() {
+  const raw = localStorage.getItem("wakfu_live_combat_state");
+  if (!raw) return;
+
+  try {
+    const state = JSON.parse(raw);
+
+    // Restore Global State variables
+    fightData = state.fightData || {};
+    healData = state.healData || {};
+    armorData = state.armorData || {};
+    playerClasses = state.playerClasses || {};
+    manualOverrides = state.manualOverrides || {};
+    summonBindings = state.summonBindings || {};
+    fightStartTime = state.fightStartTime || null;
+    awaitingNewFight = state.awaitingNewFight || false;
+
+    // Set flag so startTracking knows NOT to wipe this data
+    if (Object.keys(fightData).length > 0 || Object.keys(healData).length > 0) {
+      window.isRestoredSession = true;
+    }
+
+    // Force UI Refresh
+    if (typeof renderMeter === "function") renderMeter();
+    if (typeof updateWatchdogUI === "function") updateWatchdogUI();
+  } catch (e) {
+    console.error("Failed to restore live combat state", e);
   }
 }
