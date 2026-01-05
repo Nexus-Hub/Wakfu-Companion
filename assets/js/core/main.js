@@ -198,18 +198,12 @@ async function startTracking(handle) {
 // Maintenance Routine to periodically purge internal caches.
 function startMaintenanceRoutine() {
   setInterval(() => {
-    // 1. Force Clear Chat if it gets somehow huge (safety net)
-    const chatList = document.getElementById("chat-list");
-    if (chatList && chatList.children.length > 300) {
-      chatList.innerHTML = "";
-    }
-
-    // 2. Clear Parser Cache
+    // 1. Clear Parser Cache
     if (typeof logLineCache !== "undefined") {
       logLineCache.clear();
     }
 
-    // 3. Clear Icon Cache (Forces regeneration of strings)
+    // 2. Clear Icon Cache (Forces regeneration of strings)
     if (typeof playerIconCache !== "undefined") {
       playerIconCache = {};
     }
