@@ -30,28 +30,30 @@ const trackerList = document.getElementById("tracker-list");
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Core Logic & State Restoration
+  // 1. Data Preparation
+  // We need the databases ready before we try to render anything.
+  initMonsterDatabase(); // combat.js - Builds monster icon lookup
+  generateSpellMap(); // combat.js - Builds class spell lookup
+  initTrackerDropdowns(); // tracker.js - Prepares item lists
+
+  // 2. Core Logic & State Restoration
   checkPreviousFile(); // filesystem.js
   loadFightHistory(); // combat.js
   initForecast(); // forecast.js
 
-  // Restore Live Combat Data (Persistence)
+  // 3. Restore Live Combat Data
+  // Now that the DB is ready, we can render the restored data with correct icons.
   if (typeof loadLiveCombatState === "function") {
     loadLiveCombatState();
   }
 
-  // 2. Data Preparation
-  initMonsterDatabase(); // combat.js
-  generateSpellMap(); // combat.js
-  initTrackerDropdowns(); // tracker.js
-
-  // 3. UI Rendering
+  // 4. UI Rendering
   renderMeter(); // ui.js
   setupDragAndDrop(); // ui.js
   updateDailyTimer(); // ui.js
   updateWatchdogUI(); // ui.js
 
-  // 4. Background Tasks
+  // 5. Background Tasks
   setInterval(updateDailyTimer, 60000);
 
   // Memory Maintenance
@@ -59,11 +61,11 @@ document.addEventListener("DOMContentLoaded", () => {
     startMaintenanceRoutine();
   }
 
-  // 5. Draggable Windows
+  // 6. Draggable Windows
   const qtWindow = document.getElementById("quick-trans-modal");
   const qtHandle = document.getElementById("qt-drag-handle");
   if (qtWindow && qtHandle) {
-    makeDraggable(qtWindow, qtHandle); // utils.js
+    makeDraggable(qtWindow, qtHandle);
   }
 
   const sessWindow = document.getElementById("session-window");
