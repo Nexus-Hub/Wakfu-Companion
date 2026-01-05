@@ -1,49 +1,67 @@
 # Nexus Wakfu Companion
 
-**Live Tool:** [https://wakfu-companion.vercel.app/](https://wakfu-companion.vercel.app/) Migrated to vercel as it's free compared to railway
-**Live till January 18th:** [https://wakfu-companion-production.up.railway.app/](https://wakfu-companion-production.up.railway.app/)
+**Live Tool:** [https://wakfu-companion.vercel.app/](https://wakfu-companion.vercel.app/)  
+**Legacy (Expires Jan 18th):** [https://wakfu-companion-production.up.railway.app/](https://wakfu-companion-production.up.railway.app/)
 
-**Nexus Wakfu Companion** is a high-performance, browser-based utility for _Wakfu_ players. It parses the game's `wakfu-chat.log` file in real-time using the **File System Access API**, providing an interactive overlay for combat statistics, inventory tracking, and multilingual chat translation without requiring any local installation or game client modification.
+**Nexus Wakfu Companion** is a high-performance, browser-based utility for _Wakfu_ players. It parses the game's `wakfu-chat.log` file in real-time using the **File System Access API**, providing an interactive overlay for combat statistics, inventory tracking, session tracking, and multilingual chat translation without requiring any local installation or game client modification.
+
+---
 
 ## 🚀 New in This Version
 
-- **📉 Memory Optimization:** Implemented batch rendering and DOM limiting to prevent memory leaks during long sessions or massive loot streaks (reduced memory usage to <200MB).
-- **🔍 Item Tracker Filters:** Filter your tracking list by Gathering Profession (Miner, Farmer, Trapper, etc.) or view All items with a single click.
-- **⚡ Smart Sorting:** Tracker sorting now prioritizes Crafting Professions first, then Item Level, then Name. Supports Ascending/Descending toggle.
-- **🛠️ Profession XP Calculator:** Renamed and improved. Calculate resources needed for specific level ranges and add them directly to your tracker.
+### ⏱️ Session Recap
+
+A powerful new floating window to track your grinding efficiency in real-time:
+
+- **Kamas Tracker:** Tracks Earned, Spent, and Net Profit during the session.
+- **XP Breakdown:** Separates **Combat XP** from **Profession XP** (Farmer, Miner, etc.), displaying specific icons for each source.
+- **Activities:** Counts completed **Quests** and **Challenges** automatically.
+- **Smart Timer:** Tracks session duration with auto-pause functionality (pauses if the tab is closed for >60 seconds).
+- **Persistence:** Session data is saved locally, so you don't lose your stats if you refresh the page.
+
+### ⚡ Performance & Optimizations
+
+- **Ultra-Low Memory Footprint:** Rewritten rendering engine using **Event Delegation** and **Lazy Loading**. The app now runs efficiently even during massive log spam.
+- **Smart API Usage:** Chat translation now ignores Combat/Game logs to save API quota and bandwidth.
+- **Instant Icon Loading:** Fixed icon caching issues for enemies and player classes upon page reload.
+
+---
 
 ## ⚔️ Key Features
 
 ### 📊 Advanced Combat Meter
 
-- **Real-Time Stats:** Track Damage, Healing, and Armor (Shields) across all entities.
-- **Split View:** Automatically separates **Allies** and **Enemies** based on a massive internal database of monster families and player classes.
+- **Real-Time Stats:** Track Damage, Healing, and Armor (Shields).
+- **Split View:** Automatically separates **Allies** and **Enemies**.
 - **Smart Attribution:**
-  - **Indirect Damage:** Spells like _Poisons_ or _Traps_ are correctly attributed to the caster, not the trigger.
-  - **Summons:** Drag & Drop a summon onto its master to merge their stats.
-- **Auto-Reset Watchdog:** The meter holds data after a fight ends for review and automatically resets **only** when the next fight begins.
+  - **Indirect Damage:** Poisons, Traps, and Glyphs are correctly attributed to the caster.
+  - **Summons:** Drag & Drop a summon onto its master in the list to merge their stats.
+- **Heal Safeguard:** Automatically detects if a heal is a player spell or a boss mechanic/self-heal.
+- **Persistence:** Live combat data is saved to LocalStorage, preventing data loss on accidental refreshes.
 - **Picture-in-Picture (PiP):** Pop the meter out into a floating "Always on Top" window overlay.
 
 ### 🎒 Intelligent Item Tracker
 
-- **Universal Search:** Database includes all Gathering Resources + Monster Drops.
-- **Profession Filters:** Quickly toggle visibility between Miner, Lumberjack, Herbalist, Farmer, Fisherman, and Trapper.
-- **Smart Tooltips:** Hover over an item to see which crafting professions use it (e.g., _"Used in: Armorer, Jeweler"_).
-- **Visual Progress:** Progress bars for farming goals.
-- **Toast Notifications:** Non-intrusive popups when items are looted or goals are reached.
+- **Universal Search:** Database includes Gathering Resources + Monster Drops.
+- **Profession Filters:** Toggle visibility for Miner, Lumberjack, Farmer, etc.
+- **Smart Tooltips:** Hover over an item to see its usage in recipes (e.g., _"Used in: Armorer, Jeweler"_).
+- **Visual Progress:** Progress bars and "Goal Reached" sound effects.
+- **Floating Window Support:** Fully functional Delete/Edit controls inside the PiP window.
 
 ### 💬 Chat & Translator
 
-- **Auto-Translator:** Integrates with Google Translate API to convert PT, FR, and ES messages to English in real-time.
-- **Channel Filters:** Toggle visibility for Guild, Group, Trade, Recruitment, etc.
-- **Memory Efficient:** Automatically prunes old chat messages to keep browser performance high.
+- **Auto-Translator:** Integrates with Google Translate API to convert PT, FR, and ES messages to English.
+- **Smart Filters:** Strictly separates Game Logs from Chat Messages.
+- **Memory Efficient:** Automatically prunes old messages to maintain performance.
 
 ### 📅 Utilities Sidebar
 
-- **Professions XP Calculator:** Calculate exactly how many crafts are needed to reach a target level and generate a shopping list.
-- **Dungeon Forecast:** View the current and upcoming daily bonuses for "Guild of Hunters" and "Mod'Ule".
+- **Crafting XP Calculator:** Calculate exactly how many crafts are needed to reach a target level and generate a resource list.
+- **Dungeon Forecast:** View daily bonuses for "Guild of Hunters" and "Mod'Ule".
 - **Daily Timer:** Live countdown to the server reset (Europe/Paris timezone).
-- **Travel Routes:** Optimized paths for daily quest runs.
+- **Travel Routes:** Visual pill-based guides for daily quest runs.
+
+---
 
 ## 🛠️ How to Use
 
@@ -57,11 +75,11 @@
 
 - **Privacy First:** All parsing logic runs **locally** in your browser. No game logs or personal data are ever uploaded to a server.
 - **Persistence:**
-  - **IndexedDB:** Saves the file handle so you can reconnect instantly upon refreshing the page.
-  - **LocalStorage:** Saves your tracker list, window preferences, and forecast data.
+  - **IndexedDB:** Saves the file handle for instant reconnection.
+  - **LocalStorage:** Saves tracker list, window preferences, session stats, and combat history.
 - **Stack:** Pure Vanilla JavaScript (ES6+), HTML5, CSS3. Zero framework overhead.
 
-## 🤝 Credits & Data
+## 🤝 Credits
 
 - **Dungeon Forecast Data:** Sourced from Narakia and Vicky Ƶweistein.
 - **Assets:** Game icons and data compiled from official Wakfu community resources.
