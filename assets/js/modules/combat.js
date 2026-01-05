@@ -650,26 +650,30 @@ const LOOT_KEYWORDS = [
 async function parseFile() {
   if (isReading || !fileHandle) return;
   isReading = true;
+
   try {
     const file = await fileHandle.getFile();
+
+    // Success: Reset error counter
+    permissionStrikeCount = 0;
+
     if (file.size > fileOffset) {
       const blob = file.slice(fileOffset, file.size);
       const text = await blob.text();
 
-      // Regex split is cleaner but manual is often safer for memory
+      // Optimization: Manual split to avoid memory retention issues
       const lines = text.split(/\r?\n/);
 
       for (let i = 0; i < lines.length; i++) {
-        // Force V8 to detach the string from the large file blob
+        // Detach string from memory blob
         const cleanLine = (" " + lines[i]).slice(1);
         processLine(cleanLine);
       }
 
-      // Explicitly clear array
-      lines.length = 0;
-
+      lines.length = 0; // Clear array
       fileOffset = file.size;
 
+      // Batch Update UI
       renderMeter();
 
       if (trackerDirty) {
@@ -679,8 +683,35 @@ async function parseFile() {
       }
     }
   } catch (err) {
-    console.error(err);
+    // --- HANDLE FILE LOCKING ---
+    if (err.name === "NotReadableError") {
+      // This is normal. The game is currently writing to the file. We just skip this tick and try again in 1 second. DO NOT increment permissionStrikeCount.
+      console.warn("[Nexus] File locked by game (busy). Retrying next tick...");
+    }
+    // Handle actual Permission Loss or File Deletion
+    else if (
+      err.name === "NotFoundError" ||
+      err.message.includes("permission")
+    ) {
+      permissionStrikeCount++;
+      console.error(`[Nexus] Read Error (${permissionStrikeCount}/10):`, err);
+
+      // Only stop if it fails 10 times consecutively (10 seconds of failure)
+      if (permissionStrikeCount >= 10) {
+        console.error("[Nexus] Persistent file error. Stopping reader.");
+        if (typeof parseIntervalId !== "undefined")
+          clearInterval(parseIntervalId);
+
+        // Show Reconnect UI
+        document.getElementById("setup-panel").style.display = "block";
+        document.getElementById("drop-zone").style.display = "none";
+        document.getElementById("reconnect-container").style.display = "block";
+      }
+    } else {
+      console.error("[Nexus] Unexpected Error:", err);
+    }
   } finally {
+    // Critical: Always unlock the reader so the next interval tick can run
     isReading = false;
   }
 }
