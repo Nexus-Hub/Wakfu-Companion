@@ -56,12 +56,16 @@ function processChatLog(line) {
 
 function addChatMessage(time, channel, author, message, skipAuto = false) {
   const list = document.getElementById("chat-list");
+
+  // 1. SMART SCROLL: Check if we are at the bottom BEFORE adding new content
+  const isAtBottom =
+    list.scrollHeight - list.scrollTop - list.clientHeight <= 50;
+
   const emptyState = list.querySelector(".empty-state");
   if (emptyState) list.innerHTML = "";
 
-  // AGGRESSIVE PRUNING: Keep DOM light
+  // Pruning
   while (list.children.length >= MAX_CHAT_HISTORY) {
-    // Remove first child and explicitly nullify to help GC
     const child = list.firstChild;
     list.removeChild(child);
   }
@@ -73,12 +77,11 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   div.setAttribute("data-category", category);
   const color = getChannelColor(category);
 
-  // Store raw text in property for search (faster than reading DOM)
+  // Cache text for search
   div._searchText = `[${channel}] ${author} ${message}`.toLowerCase();
-  // Store original message for translation so we don't need inline onclicks
   div._rawMessage = message;
 
-  // --- VISIBILITY CHECK ---
+  // Visibility Check
   let isVisible = true;
   if (currentChatFilter === "all") {
     if (category === "logs") isVisible = false;
@@ -126,7 +129,6 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
     "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
-  // MEMORY FIX: Removed onclick="..." that contained the full message string
   div.innerHTML = `
     <div class="chat-meta">
       <span class="chat-time">${time}</span>
@@ -140,12 +142,12 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
 
   list.appendChild(div);
 
-  // Auto-scroll only if near bottom
-  if (list.scrollHeight - list.scrollTop < list.clientHeight + 100) {
+  // 2. APPLY SCROLL: If we were at the bottom, force scroll to the new bottom
+  if (isAtBottom) {
     list.scrollTop = list.scrollHeight;
   }
 
-  // --- API OPTIMIZATION ---
+  // API Optimization
   if (transConfig.enabled && !skipAuto) {
     if (category === "logs") return;
     if (channel.includes("(PT)") && !transConfig.pt) return;
