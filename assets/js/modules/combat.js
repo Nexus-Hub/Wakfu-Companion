@@ -637,52 +637,36 @@ const LOOT_KEYWORDS = [
 async function parseFile() {
   if (isReading || !fileHandle) return;
   isReading = true;
-
   try {
     const file = await fileHandle.getFile();
-    permissionStrikeCount = 0;
-
     if (file.size > fileOffset) {
-      // optimization: slice only what we need
-      const chunk = file.slice(fileOffset, file.size);
-      const text = await chunk.text();
+      const blob = file.slice(fileOffset, file.size);
+      const text = await blob.text();
 
-      // Memory Optimization: Process line by line without creating a massive array of strings if possible
-      // But split is usually fast enough. We strictly nullify afterwards.
+      // Regex split is cleaner but manual is often safer for memory
       const lines = text.split(/\r?\n/);
 
-      // Cache length for loop performance
-      const len = lines.length;
-      for (let i = 0; i < len; i++) {
-        processLine(lines[i]);
+      for (let i = 0; i < lines.length; i++) {
+        // Force V8 to detach the string from the large file blob
+        const cleanLine = (" " + lines[i]).slice(1);
+        processLine(cleanLine);
       }
+
+      // Explicitly clear array
+      lines.length = 0;
 
       fileOffset = file.size;
 
-      // UPDATE: Only render if data actually changed (Handled in ui.js now)
-      if (typeof renderMeter === "function") renderMeter();
+      renderMeter();
 
-      if (typeof trackerDirty !== "undefined" && trackerDirty) {
+      if (trackerDirty) {
         saveTrackerState();
         renderTracker();
         trackerDirty = false;
       }
-
-      // Explicit Cleanup for GC
-      lines.length = 0;
     }
   } catch (err) {
-    if (err.name === "NotReadableError" || err.message.includes("permission")) {
-      permissionStrikeCount++;
-      if (permissionStrikeCount >= 10) {
-        if (parseIntervalId) clearInterval(parseIntervalId);
-        document.getElementById("setup-panel").style.display = "block";
-        document.getElementById("drop-zone").style.display = "none";
-        document.getElementById("reconnect-container").style.display = "block";
-      }
-    } else {
-      console.error(err);
-    }
+    console.error(err);
   } finally {
     isReading = false;
   }

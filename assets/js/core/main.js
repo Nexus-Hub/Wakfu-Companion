@@ -63,6 +63,8 @@ document.addEventListener("DOMContentLoaded", () => {
   if (sessWindow && sessHandle) {
     makeDraggable(sessWindow, sessHandle);
   }
+
+  startMaintenanceRoutine();
 });
 
 // --- EVENT LISTENERS ---
@@ -191,4 +193,25 @@ async function startTracking(handle) {
   if (parseIntervalId) clearInterval(parseIntervalId);
   parseIntervalId = setInterval(parseFile, 1000);
   startWatchdog();
+}
+
+// Maintenance Routine to periodically purge internal caches.
+function startMaintenanceRoutine() {
+  setInterval(() => {
+    // 1. Force Clear Chat if it gets somehow huge (safety net)
+    const chatList = document.getElementById("chat-list");
+    if (chatList && chatList.children.length > 300) {
+      chatList.innerHTML = "";
+    }
+
+    // 2. Clear Parser Cache
+    if (typeof logLineCache !== "undefined") {
+      logLineCache.clear();
+    }
+
+    // 3. Clear Icon Cache (Forces regeneration of strings)
+    if (typeof playerIconCache !== "undefined") {
+      playerIconCache = {};
+    }
+  }, 300000); // Every 5 minutes
 }
