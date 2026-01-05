@@ -34,7 +34,7 @@ A powerful new floating window to track your grinding efficiency in real-time:
 - **Real-Time Stats:** Track Damage, Healing, and Armor (Shields).
 - **Split View:** Automatically separates **Allies** and **Enemies**.
 - **Smart Attribution:**
-  - **Indirect Damage:** Poisons, Traps, and Glyphs are correctly attributed to the caster.
+  - **Indirect Damage:** Poisons, Traps, and Glyphs are correctly attributed to the caster. (Work In Progress)
   - **Summons:** Drag & Drop a summon onto its master in the list to merge their stats.
 - **Heal Safeguard:** Automatically detects if a heal is a player spell or a boss mechanic/self-heal.
 - **Persistence:** Live combat data is saved to LocalStorage, preventing data loss on accidental refreshes.
