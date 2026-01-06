@@ -17,113 +17,29 @@
             Default Path (Copy & Paste in File Explorer):
           </p>
 
-          <!-- Path Container with Copy Button -->
-          <div
-            style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              gap: 10px;
-              background: rgba(0, 0, 0, 0.3);
-              border: 1px solid #444;
-              padding: 10px 15px;
-              margin: 10px auto 20px auto;
-              width: fit-content;
-              border-radius: 6px;
-            "
-          >
-            <code
-              id="log-path"
-              style="
-                font-family: monospace;
-                color: #00e1ff;
-                font-size: 1rem;
-                user-select: all;
-              "
+          <!-- Cleaned Path Container -->
+          <div class="path-container">
+            <code id="log-path" class="log-path-code"
               >%AppData%\zaap\gamesLogs\wakfu\logs\</code
             >
-            <button
-              id="copy-path-btn"
-              style="
-                background: #444;
-                border: 1px solid #666;
-                color: white;
-                cursor: pointer;
-                padding: 6px 12px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 0.8rem;
-                transition: all 0.2s;
-              "
-            >
-              COPY
-            </button>
+            <button id="copy-path-btn" class="copy-path-btn">COPY</button>
           </div>
           <p>Drag the file directly from your folder to start.</p>
         </div>
 
-        <!-- Reconnect Container (Updated Design) -->
-        <div
-          id="reconnect-container"
-          style="
-            display: none;
-            background: #141414;
-            padding: 40px;
-            border: 2px solid var(--accent, #00e1ff);
-            border-radius: 10px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 1);
-            text-align: center;
-            margin: 100px auto;
-            max-width: 500px;
-            position: relative;
-            z-index: 100;
-          "
-        >
-          <p style="font-size: 1.1em; color: #eee; margin-bottom: 10px">
-            Previous file found:
-          </p>
-          <h3
-            id="prev-filename"
-            style="
-              color: var(--accent, #00e1ff);
-              margin: 0 0 25px 0;
-              font-size: 1.5em;
-              word-break: break-all;
-            "
-          >
-            wakfu-chat.log
-          </h3>
+        <!-- Cleaned Reconnect Container -->
+        <div id="reconnect-container" class="reconnect-container">
+          <p class="prev-file-label">Previous file found:</p>
+          <h3 id="prev-filename" class="prev-filename">wakfu-chat.log</h3>
 
-          <button
-            id="reconnect-btn"
-            class="add-track-btn"
-            style="
-              padding: 12px 30px;
-              font-size: 1.2em;
-              cursor: pointer;
-              margin-bottom: 15px;
-              width: 100%;
-            "
-          >
+          <button id="reconnect-btn" class="add-track-btn reconnect-action-btn">
             RECONNECT
           </button>
 
-          <p style="font-size: 0.85em; color: #aaa; margin-bottom: 25px">
-            (Browser requires confirmation)
-          </p>
+          <p class="browser-warning">(Browser requires confirmation)</p>
 
-          <div style="border-top: 1px solid #333; padding-top: 15px">
-            <button
-              id="new-file-btn"
-              style="
-                background: none;
-                border: none;
-                color: #888;
-                cursor: pointer;
-                text-decoration: underline;
-                font-size: 0.9em;
-              "
-            >
+          <div class="new-file-wrapper">
+            <button id="new-file-btn" class="new-file-link">
               Select different file
             </button>
           </div>
@@ -575,6 +491,14 @@
           <div id="chat-list">
             <div class="empty-state">Waiting for chat logs...</div>
           </div>
+
+          <button
+            id="chat-scroll-btn"
+            class="scroll-bottom-btn"
+            onclick="scrollToChatBottom()"
+          >
+            ↓
+          </button>
 
           <div class="chat-filters">
             <button

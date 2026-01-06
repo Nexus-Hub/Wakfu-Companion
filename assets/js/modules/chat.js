@@ -1,4 +1,33 @@
 // CHAT MODULE: Handles Chat, Logs, Formatting, and Translation
+const chatListEl = document.getElementById("chat-list");
+const scrollBtn = document.getElementById("chat-scroll-btn");
+
+if (chatListEl && scrollBtn) {
+  chatListEl.addEventListener("scroll", () => {
+    // Show button if scrolled up more than 100px
+    const distanceToBottom =
+      chatListEl.scrollHeight - chatListEl.scrollTop - chatListEl.clientHeight;
+    if (distanceToBottom > 150) {
+      scrollBtn.classList.add("visible");
+    } else {
+      scrollBtn.classList.remove("visible");
+    }
+  });
+}
+
+function scrollToChatBottom() {
+  const list = document.getElementById("chat-list");
+  if (list) {
+    list.scrollTop = list.scrollHeight;
+    if (typeof parseFile === "function") {
+      parseFile();
+    }
+  }
+}
+
+// Export
+window.scrollToChatBottom = scrollToChatBottom;
+
 const CHAT_COLORS = {
   Vicinity: "#cccccc",
   Private: "#00e1ff",

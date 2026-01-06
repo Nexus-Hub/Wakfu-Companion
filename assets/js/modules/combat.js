@@ -648,7 +648,16 @@ const LOOT_KEYWORDS = [
 ];
 
 async function parseFile() {
-  if (isReading || !fileHandle) return;
+  const now = Date.now();
+  if (isReading) {
+    if (window.lastReadTime && now - window.lastReadTime > 2000) {
+      console.warn("[Nexus] Reader was stuck. Forcing unlock.");
+      isReading = false;
+    } else {
+      return;
+    }
+  }
+
   isReading = true;
 
   try {
