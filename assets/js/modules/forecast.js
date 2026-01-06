@@ -67,7 +67,6 @@ function renderForecastUI() {
   if (!headerContainer || !listContainer) return;
 
   // 1. Render Header (Nav + Tabs)
-  // Translate Tab Titles
   const titleGuild =
     UI_TRANSLATIONS["GUILD_HUNTERS"][currentForecastLang] || "GUILD HUNTERS";
   const titleMod = UI_TRANSLATIONS["MODULUX"][currentForecastLang] || "MODULUX";
@@ -104,7 +103,7 @@ function renderForecastUI() {
         }
     `;
 
-  // 2. Render Language Flags (At Bottom)
+  // 2. Render Language Flags
   if (langContainer) {
     langContainer.innerHTML = `
         <button class="fc-lang-btn ${
@@ -130,7 +129,7 @@ function renderForecastUI() {
       `;
   }
 
-  // 3. Render List content (Existing Logic)
+  // 3. Process Lists
   const dungeons =
     typeof FORECAST_DB !== "undefined" ? FORECAST_DB[displayDate] : null;
 
@@ -141,7 +140,27 @@ function renderForecastUI() {
   }
 
   const classic = dungeons.filter((d) => d.type.startsWith("DJ"));
-  const modular = dungeons.filter((d) => d.type.startsWith("Modulox"));
+
+  // FILTER MODULAR: Include Modulox AND Neo-Dungeon (if date <= Feb 5, 2026)
+  const modular = dungeons.filter((d) => {
+    if (d.type.startsWith("Modulox")) return true;
+    if (d.type === "Neo-Dungeon") {
+      // Date Logic: Show until Feb 5th 2026
+      const y = currentForecastDate.getFullYear();
+      const m = currentForecastDate.getMonth(); // 0-indexed (Jan=0, Feb=1)
+      const day = currentForecastDate.getDate();
+
+      if (y < 2026) return true; // 2025 is fine
+      if (y === 2026) {
+        // Jan (0) is fine
+        if (m === 0) return true;
+        // Feb (1): Only up to 5th
+        if (m === 1 && day <= 5) return true;
+      }
+      return false;
+    }
+    return false;
+  });
 
   const classicNames = new Set(classic.map((d) => d.name));
   const modularNames = new Set(modular.map((d) => d.name));
@@ -158,7 +177,6 @@ function renderForecastUI() {
 
 // Full Grid View function
 function renderGridView(container, classicList, modularList, intersections) {
-  // Translate Headers for Grid View too
   const titleGuild =
     UI_TRANSLATIONS["GUILD_HUNTERS"][currentForecastLang] || "GUILD HUNTERS";
   const titleMod = UI_TRANSLATIONS["MODULUX"][currentForecastLang] || "MODULUX";
@@ -194,12 +212,8 @@ function renderGridColumn(list, title, emoji, typeClass, intersections) {
   else {
     list.forEach((d) => {
       const { badgeColor, typeLabel } = getDungeonStyles(d.type);
-      // Logic uses English Name, Display uses Translated Name
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
-
-      // Translate Name
       const displayName = getDungeonName(d.name);
-
       const location =
         typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
           ? DUNGEON_LOCATIONS[d.name]
@@ -229,10 +243,7 @@ function renderTabView(container, classicList, modularList, intersections) {
     targetList.forEach((d) => {
       const { badgeColor, typeLabel } = getDungeonStyles(d.type);
       const isIntersected = intersections.has(d.name) ? "is-intersected" : "";
-
-      // Translate Name
       const displayName = getDungeonName(d.name);
-
       const location =
         typeof DUNGEON_LOCATIONS !== "undefined" && DUNGEON_LOCATIONS[d.name]
           ? DUNGEON_LOCATIONS[d.name]
@@ -251,6 +262,15 @@ function renderTabView(container, classicList, modularList, intersections) {
 
 // --- Shared Helper for Colors/Labels ---
 function getDungeonStyles(rawType) {
+  // SPECIAL: Neo Dungeon
+  if (rawType === "Neo-Dungeon") {
+    return {
+      badgeColor: "#ff0055", // Hot Pink/Red for Neo
+      typeLabel: "NEO",
+    };
+  }
+
+  // STANDARD: Level Ranges
   let badgeColor = "#27ae60"; // Default Green
 
   if (rawType.includes("231")) badgeColor = "#e67e22"; // Orange

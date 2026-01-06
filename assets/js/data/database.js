@@ -3505,6 +3505,7 @@ const DUNGEON_LOCATIONS = {
   "Octopus Crew Dungeon": "Ereboria → Pirate Beach",
   "Great Zomkin's Compost": "Wabbit Island → Devastated Fields",
   "Grandmeow's House": "Astrub",
+  "Bitter-Hammer Dungeon": "Ereboria → Bitter-Hammer Cavern",
   "Treechnid Dungeon": "Bonta",
   "Deathburn Dungeon": "Ereboria → Cursed Beach",
   "Father Kwismas's House": "Kwismas Island",
