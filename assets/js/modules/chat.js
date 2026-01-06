@@ -579,7 +579,7 @@ async function performQuickTrans(targetLang) {
   outputEl.textContent = "Translating...";
   outputEl.style.color = "#888";
 
-  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(
+  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(
     text
   )}`;
 
