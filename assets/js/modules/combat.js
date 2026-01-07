@@ -1,3 +1,6 @@
+let fightStartTime = null;
+let pendingArmorDamage = null;
+
 // HELPER CONSTANTS
 const NOISE_WORDS = new Set([
   "Block!",
@@ -37,6 +40,17 @@ function processFightLog(line) {
   if (content.includes("carried over") || content.includes("tour suivant")) {
     currentCaster = null;
     currentSpell = "Passive / Indirect";
+    // Flush pending if any (assume Neutral if turn ended)
+    if (pendingArmorDamage) {
+      updateCombatData(
+        fightData,
+        pendingArmorDamage.caster,
+        pendingArmorDamage.spell,
+        pendingArmorDamage.amount,
+        "Neutral"
+      );
+      pendingArmorDamage = null;
+    }
     return;
   }
 
@@ -45,6 +59,18 @@ function processFightLog(line) {
     /^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/i
   );
   if (castMatch) {
+    // If we have pending armor damage when a NEW spell starts, flush it as Neutral
+    if (pendingArmorDamage) {
+      updateCombatData(
+        fightData,
+        pendingArmorDamage.caster,
+        pendingArmorDamage.spell,
+        pendingArmorDamage.amount,
+        "Neutral"
+      );
+      pendingArmorDamage = null;
+    }
+
     const casterCandidate = castMatch[1].trim();
     const castSpell = castMatch[2].trim();
 
@@ -67,9 +93,8 @@ function processFightLog(line) {
     const unit = actionMatch[4];
     const suffix = actionMatch[5].trim();
 
-    if (isNaN(amount) || amount <= 0) return;
-
-    // Extract suffixes
+    // --- PRE-PROCESSING: Extract Element & Spell Override ---
+    // We do this BEFORE the "amount <= 0" check because we need the element even from 0 HP lines
     const details = (suffix.match(/\(([^)]+)\)/g) || []).map((p) =>
       p.slice(1, -1)
     );
@@ -106,6 +131,31 @@ function processFightLog(line) {
         }
       }
     }
+
+    // --- RESOLVE PENDING ARMOR DAMAGE ---
+    // If we have a pending armor hit, this line (usually -0 HP) provides the element
+    if (pendingArmorDamage) {
+      let elementToUse = "Neutral";
+      // Only apply element if targets match. Otherwise, it's a disjointed event.
+      if (target === pendingArmorDamage.target) {
+        elementToUse = detectedElement || "Neutral";
+      }
+
+      updateCombatData(
+        fightData,
+        pendingArmorDamage.caster,
+        pendingArmorDamage.spell,
+        pendingArmorDamage.amount,
+        elementToUse
+      );
+      pendingArmorDamage = null;
+    }
+    // ------------------------------------
+
+    // Now valid amount check (Exit if 0, effectively skipping the -0 HP line itself)
+    if (isNaN(amount) || amount <= 0) return;
+
+    if (!fightStartTime) fightStartTime = Date.now();
 
     // ATTRIBUTION LOGIC
     let finalCaster = currentCaster;
@@ -164,18 +214,18 @@ function processFightLog(line) {
     const isArmor = unit.match(new RegExp(armorUnits, "i"));
 
     if (isArmor) {
-      // UPDATED LOGIC: Distinguish Armor Damage vs Armor Gain
       if (sign === "-") {
-        // Negative Armor = Damage (Shield Break) -> Add to Damage Meter
-        updateCombatData(
-          fightData,
-          finalCaster,
-          finalSpell,
-          amount,
-          detectedElement || "Neutral"
-        );
+        // Negative Armor = Damage (Shield Break)
+        // STORE AND WAIT for next line to get Element
+        pendingArmorDamage = {
+          caster: finalCaster,
+          spell: finalSpell,
+          amount: amount,
+          target: target,
+        };
+        return; // Stop here, wait for next loop iteration
       } else {
-        // Positive Armor = Shielding -> Add to Armor Meter
+        // Positive Armor = Shielding
         updateCombatData(armorData, finalCaster, finalSpell, amount, null);
       }
     } else if (sign === "+") {
@@ -292,8 +342,9 @@ function performReset(isAuto = false) {
   awaitingNewFight = false;
   hasUnsavedChanges = false;
   fightStartTime = null;
+  pendingArmorDamage = null; // Clear any hanging buffer
 
-  // 4. CLEAR STORAGE (Critical update)
+  // 4. CLEAR STORAGE
   localStorage.removeItem("wakfu_live_combat_state");
 
   // 5. Reset Views
@@ -304,13 +355,16 @@ function performReset(isAuto = false) {
   updateWatchdogUI();
 }
 
-// Auto-save when closing the page/tab
-window.addEventListener("beforeunload", () => {
-  saveLiveCombatState();
-});
-
-// Export for main.js
-window.loadLiveCombatState = loadLiveCombatState;
+function getFightDuration() {
+  if (!fightStartTime) return "00:00";
+  const end = lastCombatTime > fightStartTime ? lastCombatTime : Date.now();
+  const diff = end - fightStartTime;
+  const minutes = Math.floor(diff / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+}
 
 function mergeSummonData(summon, master) {
   // We iterate through all 3 categories: damage, healing, and armor
@@ -776,7 +830,6 @@ function processLine(line) {
 }
 
 function saveLiveCombatState() {
-  // Only save if there is actual data
   if (Object.keys(fightData).length === 0 && Object.keys(healData).length === 0)
     return;
 
@@ -788,7 +841,7 @@ function saveLiveCombatState() {
     manualOverrides,
     summonBindings,
     fightStartTime,
-    awaitingNewFight, // Save the watchdog state too
+    awaitingNewFight,
   };
   localStorage.setItem("wakfu_live_combat_state", JSON.stringify(state));
 }
@@ -800,7 +853,6 @@ function loadLiveCombatState() {
   try {
     const state = JSON.parse(raw);
 
-    // Restore Global State variables
     fightData = state.fightData || {};
     healData = state.healData || {};
     armorData = state.armorData || {};
@@ -810,15 +862,21 @@ function loadLiveCombatState() {
     fightStartTime = state.fightStartTime || null;
     awaitingNewFight = state.awaitingNewFight || false;
 
-    // Set flag so startTracking knows NOT to wipe this data
     if (Object.keys(fightData).length > 0 || Object.keys(healData).length > 0) {
       window.isRestoredSession = true;
     }
 
-    // Force UI Refresh
     if (typeof renderMeter === "function") renderMeter();
     if (typeof updateWatchdogUI === "function") updateWatchdogUI();
   } catch (e) {
     console.error("Failed to restore live combat state", e);
   }
 }
+
+// Auto-save when closing the page/tab
+window.addEventListener("beforeunload", () => {
+  saveLiveCombatState();
+});
+
+// Export for main.js
+window.loadLiveCombatState = loadLiveCombatState;
