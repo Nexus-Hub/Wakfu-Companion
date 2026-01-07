@@ -51,7 +51,7 @@ const FORECAST_DB = {
     { type: "Modulox 96 - 140", name: "Moowolf's Lair" },
     { type: "Modulox 141 - 185", name: "Gerbean Dungeon" },
     { type: "Modulox 186 - 230", name: "Phytomorph Dungeon" },
-    { type: "Neo-Dungeon", name: "??" },
+    { type: "Neo-Dungeon", name: "Treechnid Dungeon" },
   ],
   "08/01/2026": [
     { type: "DJ 6 - 20", name: "Gobball Pastures" },
