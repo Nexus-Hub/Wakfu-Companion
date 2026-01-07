@@ -48,7 +48,7 @@ const FORECAST_DB = {
     { type: "DJ 231 - 245", name: "Ferociraptor Dungeon" },
     { type: "Modulox 6 - 50", name: "The Tofuhouse" },
     { type: "Modulox 51 - 95", name: "Dry Selachii" },
-    { type: "Modulox 96 - 140", name: "Moowolf's Lair" },
+    { type: "Modulox 96 - 140", name: "YeCh'Ti'Wawa's Kennel" },
     { type: "Modulox 141 - 185", name: "Gerbean Dungeon" },
     { type: "Modulox 186 - 230", name: "Phytomorph Dungeon" },
     { type: "Neo-Dungeon", name: "Treechnid Dungeon" },

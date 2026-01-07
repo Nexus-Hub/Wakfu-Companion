@@ -3562,7 +3562,7 @@ const DUNGEON_LOCATIONS = {
   "Puddly Dungeon": "Sufokia",
   "The Ambassador's Wing": "Ruins of the Asparah Gorge",
   "Ambassador's Wing": "Ruins of the Asparah Gorge",
-  "The YeCh'Ti'Wawa's Kennel": "Snowbound Village",
+  "YeCh'Ti'Wawa's Kennel": "Snowbound Village",
   "The Frozen Tower": "Harebourg Castle",
   "The Snaptrap": "Sufokia Mine",
   "The Whirlway Station": "Mount Zinit",
