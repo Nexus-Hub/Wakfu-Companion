@@ -25,9 +25,7 @@ function processFightLog(line) {
 
   // Auto Reset Logic
   if (
-    typeof isAutoResetOn !== "undefined" &&
     isAutoResetOn &&
-    typeof awaitingNewFight !== "undefined" &&
     awaitingNewFight &&
     !content.toLowerCase().includes("over")
   ) {
@@ -84,9 +82,6 @@ function processFightLog(line) {
       if (norm) {
         detectedElement = norm;
       } else if (!NOISE_WORDS.has(d)) {
-        // IMPROVED LOGIC: Spell Override & Item Detection
-
-        // 1. Is the text inside brackets a KNOWN spell in our DB?
         const knownMatch = Array.from(allKnownSpells).find(
           (s) => d === s || d.includes(s)
         );
@@ -94,8 +89,6 @@ function processFightLog(line) {
         if (knownMatch) {
           spellOverride = knownMatch;
         } else {
-          // 2. UNKNOWN text processing
-          // Detect if this is likely an Item/Consumable which should ALWAYS take precedence
           const isPrioritySource =
             d.includes("Potion") ||
             d.includes("Flask") ||
@@ -105,7 +98,6 @@ function processFightLog(line) {
           const isCurrentSpellValid =
             currentSpell && spellToClassMap[currentSpell];
 
-          // If it's a priority item (Potion) OR if we don't have a valid active spell, use the text.
           if (isPrioritySource || !isCurrentSpellValid) {
             if (!d.toLowerCase().includes("lost")) {
               spellOverride = d;
@@ -137,12 +129,11 @@ function processFightLog(line) {
       const casterIsAlly = finalCaster && isPlayerAlly({ name: finalCaster });
       const targetIsAlly = isPlayerAlly({ name: target });
 
-      // 1. Ally healing Enemy? -> Boss Mechanic (Self Heal)
       if (casterIsAlly && !targetIsAlly) {
         finalCaster = target;
         if (!spellOverride) spellOverride = "Mechanic / Passive";
       }
-      // 2. Enemy healing Enemy? -> Check if it's a spell or a mechanic
+
       if (!casterIsAlly && !targetIsAlly && finalCaster !== target) {
         const spellNameToCheck = spellOverride || currentSpell;
         if (spellNameToCheck && !spellToClassMap[spellNameToCheck]) {
@@ -153,22 +144,12 @@ function processFightLog(line) {
 
     let finalSpell = spellOverride || currentSpell;
 
-    // --- CUSTOM OVERRIDES ---
-
-    // 1. Everlasting Myotoxin (Sandyoptera Dungeon) - Force to Enemy
-    if (finalSpell && finalSpell.includes("Everlasting Myotoxin")) {
-      finalCaster = "Dungeon Mechanic";
-      finalSpell = "Everlasting Myotoxin";
-    }
-
-    // ------------------------
-
     // SIGNATURE REROUTING
     if (
       finalSpell &&
       finalSpell !== "Unknown Spell" &&
       finalSpell !== "Passive / Indirect" &&
-      finalCaster !== "Dungeon Mechanic" // Don't reroute special mechanic
+      finalCaster !== "Dungeon Mechanic"
     ) {
       finalCaster = getSignatureCaster(finalSpell, finalCaster);
     }
@@ -183,7 +164,20 @@ function processFightLog(line) {
     const isArmor = unit.match(new RegExp(armorUnits, "i"));
 
     if (isArmor) {
-      updateCombatData(armorData, finalCaster, finalSpell, amount, null);
+      // UPDATED LOGIC: Distinguish Armor Damage vs Armor Gain
+      if (sign === "-") {
+        // Negative Armor = Damage (Shield Break) -> Add to Damage Meter
+        updateCombatData(
+          fightData,
+          finalCaster,
+          finalSpell,
+          amount,
+          detectedElement || "Neutral"
+        );
+      } else {
+        // Positive Armor = Shielding -> Add to Armor Meter
+        updateCombatData(armorData, finalCaster, finalSpell, amount, null);
+      }
     } else if (sign === "+") {
       updateCombatData(
         healData,
@@ -203,7 +197,7 @@ function processFightLog(line) {
     }
 
     lastCombatTime = Date.now();
-    if (typeof updateWatchdogUI === "function") updateWatchdogUI();
+    updateWatchdogUI();
   }
 }
 
