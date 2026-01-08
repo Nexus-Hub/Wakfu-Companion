@@ -31,27 +31,25 @@ const trackerList = document.getElementById("tracker-list");
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
   // 1. Data Preparation
-  // We need the databases ready before we try to render anything.
-  initMonsterDatabase(); // combat.js - Builds monster icon lookup
-  generateSpellMap(); // combat.js - Builds class spell lookup
-  initTrackerDropdowns(); // tracker.js - Prepares item lists
+  if (typeof initMonsterDatabase === "function") initMonsterDatabase();
+  if (typeof generateSpellMap === "function") generateSpellMap();
+  if (typeof initTrackerDropdowns === "function") initTrackerDropdowns();
 
   // 2. Core Logic & State Restoration
-  checkPreviousFile(); // filesystem.js
-  loadFightHistory(); // combat.js
-  initForecast(); // forecast.js
+  if (typeof checkPreviousFile === "function") checkPreviousFile();
+  if (typeof loadFightHistory === "function") loadFightHistory();
+  if (typeof initForecast === "function") initForecast();
 
   // 3. Restore Live Combat Data
-  // Now that the DB is ready, we can render the restored data with correct icons.
   if (typeof loadLiveCombatState === "function") {
     loadLiveCombatState();
   }
 
   // 4. UI Rendering
-  renderMeter(); // ui.js
-  setupDragAndDrop(); // ui.js
-  updateDailyTimer(); // ui.js
-  updateWatchdogUI(); // ui.js
+  if (typeof renderMeter === "function") renderMeter();
+  if (typeof setupDragAndDrop === "function") setupDragAndDrop();
+  if (typeof updateDailyTimer === "function") updateDailyTimer();
+  if (typeof updateWatchdogUI === "function") updateWatchdogUI();
 
   // 5. Background Tasks
   setInterval(updateDailyTimer, 60000);
@@ -72,6 +70,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const sessHandle = document.getElementById("session-drag-handle");
   if (sessWindow && sessHandle) {
     makeDraggable(sessWindow, sessHandle);
+  }
+
+  // 7. ASYNC DATA LOAD (Fix for Missing Tooltips)
+  // Load professions data in background, then refresh tracker to populate "Used In" tooltips
+  if (typeof loadScript === "function") {
+    loadScript("assets/js/data/professions_data.js")
+      .then(() => {
+        // Re-render tracker now that data is available
+        if (typeof renderTracker === "function") renderTracker();
+      })
+      .catch((err) => console.warn("Background load failed:", err));
   }
 });
 
