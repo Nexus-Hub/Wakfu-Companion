@@ -75,7 +75,7 @@ const FORECAST_DB = {
     { type: "Modulox 96 - 140", name: "Lenald Empelol's Temple" },
     { type: "Modulox 141 - 185", name: "Wellspring of Evil" },
     { type: "Modulox 186 - 230", name: "Iced-Over Crest" },
-    { type: "Neo-Dungeon", name: "??" },
+    { type: "Neo-Dungeon", name: "Royal Gobball" },
   ],
   "09/01/2026": [
     { type: "DJ 6 - 20", name: "The Tofuhouse" },
