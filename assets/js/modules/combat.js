@@ -2,20 +2,7 @@ let fightStartTime = null;
 let pendingArmorDamage = null;
 
 // HELPER CONSTANTS
-const NOISE_WORDS = new Set([
-  "Block!",
-  "Critical",
-  "Critical Hit",
-  "Critical Hit Expert",
-  "Slow Influence",
-  "Backstab",
-  "Sidestab",
-  "Berserk",
-  "Influence",
-  "Dodge",
-  "Lock",
-  "Increased Damage",
-]);
+const NOISE_WORDS = new Set(["Block!", "Critical", "Critical Hit", "Critical Hit Expert", "Slow Influence", "Backstab", "Sidestab", "Berserk", "Influence", "Dodge", "Lock", "Increased Damage"]);
 
 function processFightLog(line) {
   const hpUnits = "HP|PdV|PV";
@@ -27,11 +14,7 @@ function processFightLog(line) {
   const content = parts[1].trim();
 
   // Auto Reset Logic
-  if (
-    isAutoResetOn &&
-    awaitingNewFight &&
-    !content.toLowerCase().includes("over")
-  ) {
+  if (isAutoResetOn && awaitingNewFight && !content.toLowerCase().includes("over")) {
     performReset(true);
     awaitingNewFight = false;
   }
@@ -42,32 +25,18 @@ function processFightLog(line) {
     currentSpell = "Passive / Indirect";
     // Flush pending if any (assume Neutral if turn ended)
     if (pendingArmorDamage) {
-      updateCombatData(
-        fightData,
-        pendingArmorDamage.caster,
-        pendingArmorDamage.spell,
-        pendingArmorDamage.amount,
-        "Neutral"
-      );
+      updateCombatData(fightData, pendingArmorDamage.caster, pendingArmorDamage.spell, pendingArmorDamage.amount, "Neutral");
       pendingArmorDamage = null;
     }
     return;
   }
 
   // 2. Cast Detection
-  const castMatch = content.match(
-    /^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.|\s\(|$)/i
-  );
+  const castMatch = content.match(/^(.*?) (?:casts|lance(?: le sort)?|lanza(?: el hechizo)?|lança(?: o feitiço)?) (.*?)(?:\.(?=$|\s\()|(?=\s\()|$)/i);
   if (castMatch) {
     // If we have pending armor damage when a NEW spell starts, flush it as Neutral
     if (pendingArmorDamage) {
-      updateCombatData(
-        fightData,
-        pendingArmorDamage.caster,
-        pendingArmorDamage.spell,
-        pendingArmorDamage.amount,
-        "Neutral"
-      );
+      updateCombatData(fightData, pendingArmorDamage.caster, pendingArmorDamage.spell, pendingArmorDamage.amount, "Neutral");
       pendingArmorDamage = null;
     }
 
@@ -82,10 +51,20 @@ function processFightLog(line) {
     return;
   }
 
+  // --- NEW: STATE ACTIVATION DETECTION (Fix for Flaming) ---
+  // Captures "Player: Flaming (Lvl X)" to set context for following damage
+  const stateMatch = content.match(/^([\w\s'-]+): (Flaming|Embrasement|Scalded|Echaudé|Poison|Hémorragie|Bleeding)(?: \(|$)/);
+  if (stateMatch) {
+    const sourceName = stateMatch[1].trim();
+    const stateName = stateMatch[2].trim();
+    // Only switch context if it's likely a player
+    if (!nonCombatantList.some((nc) => sourceName.includes(nc))) {
+      stateSources[stateName] = sourceName;
+    }
+  }
+
   // 3. Action Detection (Damage/Heal/Armor)
-  const actionMatch = content.match(
-    new RegExp(`^(.*?): ([+-])?(${numPattern}) (${hpUnits}|${armorUnits})(.*)`)
-  );
+  const actionMatch = content.match(new RegExp(`^(.*?): ([+-])?(${numPattern}) (${hpUnits}|${armorUnits})(.*)`));
   if (actionMatch) {
     const target = actionMatch[1].trim();
     const sign = actionMatch[2] || "";
@@ -95,9 +74,7 @@ function processFightLog(line) {
 
     // --- PRE-PROCESSING: Extract Element & Spell Override ---
     // We do this BEFORE the "amount <= 0" check because we need the element even from 0 HP lines
-    const details = (suffix.match(/\(([^)]+)\)/g) || []).map((p) =>
-      p.slice(1, -1)
-    );
+    const details = (suffix.match(/\(([^)]+)\)/g) || []).map((p) => p.slice(1, -1));
 
     let detectedElement = null;
     let spellOverride = null;
@@ -107,21 +84,14 @@ function processFightLog(line) {
       if (norm) {
         detectedElement = norm;
       } else if (!NOISE_WORDS.has(d)) {
-        const knownMatch = Array.from(allKnownSpells).find(
-          (s) => d === s || d.includes(s)
-        );
+        const knownMatch = Array.from(allKnownSpells).find((s) => d === s || d.includes(s));
 
         if (knownMatch) {
           spellOverride = knownMatch;
         } else {
-          const isPrioritySource =
-            d.includes("Potion") ||
-            d.includes("Flask") ||
-            d.includes("Flasque") ||
-            d.includes("Consumable");
+          const isPrioritySource = d.includes("Potion") || d.includes("Flask") || d.includes("Flasque") || d.includes("Consumable");
 
-          const isCurrentSpellValid =
-            currentSpell && spellToClassMap[currentSpell];
+          const isCurrentSpellValid = currentSpell && spellToClassMap[currentSpell];
 
           if (isPrioritySource || !isCurrentSpellValid) {
             if (!d.toLowerCase().includes("lost")) {
@@ -141,13 +111,7 @@ function processFightLog(line) {
         elementToUse = detectedElement || "Neutral";
       }
 
-      updateCombatData(
-        fightData,
-        pendingArmorDamage.caster,
-        pendingArmorDamage.spell,
-        pendingArmorDamage.amount,
-        elementToUse
-      );
+      updateCombatData(fightData, pendingArmorDamage.caster, pendingArmorDamage.spell, pendingArmorDamage.amount, elementToUse);
       pendingArmorDamage = null;
     }
     // ------------------------------------
@@ -159,18 +123,16 @@ function processFightLog(line) {
 
     // ATTRIBUTION LOGIC
     let finalCaster = currentCaster;
-
-    // No active caster? Attribute to Target (Self-proc)
     if (!currentCaster || currentCaster === "Unknown") {
       finalCaster = target;
     }
 
-    // Mechanics that reflect/self-harm
-    if (
-      ["Burning Armor", "Armadura Ardiente", "Reflect", "Thorns"].some(
-        (s) => spellOverride && spellOverride.includes(s)
-      )
-    ) {
+    // 1. Check State Ownership (The Fix)
+    if (spellOverride && stateSources[spellOverride]) {
+      finalCaster = stateSources[spellOverride];
+    }
+    // 2. Specific self-harm check
+    else if (["Burning Armor", "Armadura Ardiente", "Reflect", "Thorns"].some((s) => spellOverride && spellOverride.includes(s))) {
       finalCaster = target;
     }
 
@@ -195,12 +157,7 @@ function processFightLog(line) {
     let finalSpell = spellOverride || currentSpell;
 
     // SIGNATURE REROUTING
-    if (
-      finalSpell &&
-      finalSpell !== "Unknown Spell" &&
-      finalSpell !== "Passive / Indirect" &&
-      finalCaster !== "Dungeon Mechanic"
-    ) {
+    if (finalSpell && finalSpell !== "Unknown Spell" && finalSpell !== "Passive / Indirect" && finalCaster !== "Dungeon Mechanic") {
       finalCaster = getSignatureCaster(finalSpell, finalCaster);
     }
 
@@ -229,21 +186,9 @@ function processFightLog(line) {
         updateCombatData(armorData, finalCaster, finalSpell, amount, null);
       }
     } else if (sign === "+") {
-      updateCombatData(
-        healData,
-        finalCaster,
-        finalSpell,
-        amount,
-        detectedElement || "Neutral"
-      );
+      updateCombatData(healData, finalCaster, finalSpell, amount, detectedElement || "Neutral");
     } else {
-      updateCombatData(
-        fightData,
-        finalCaster,
-        finalSpell,
-        amount,
-        detectedElement || "Neutral"
-      );
+      updateCombatData(fightData, finalCaster, finalSpell, amount, detectedElement || "Neutral");
     }
 
     lastCombatTime = Date.now();
@@ -252,8 +197,7 @@ function processFightLog(line) {
 }
 
 function updateCombatData(dataSet, player, spell, amount, element) {
-  if (!dataSet[player])
-    dataSet[player] = { name: player, total: 0, spells: {} };
+  if (!dataSet[player]) dataSet[player] = { name: player, total: 0, spells: {} };
   dataSet[player].total += amount;
 
   const spellKey = `${spell}|${element || "neutral"}`;
@@ -288,8 +232,7 @@ function detectClass(playerName, spellName) {
 
 function saveFightToHistory() {
   // 1. Check if there is data
-  if (Object.keys(fightData).length === 0 && Object.keys(healData).length === 0)
-    return;
+  if (Object.keys(fightData).length === 0 && Object.keys(healData).length === 0) return;
 
   // 2. NEW: Check if we actually have new changes since last save
   if (!hasUnsavedChanges) return;
@@ -334,7 +277,6 @@ function performReset(isAuto = false) {
   fightData = {};
   healData = {};
   armorData = {};
-  // Note: We intentionally keep playerClasses and manualOverrides to preserve config
 
   // 3. Reset State
   currentCaster = "Unknown";
@@ -343,6 +285,7 @@ function performReset(isAuto = false) {
   hasUnsavedChanges = false;
   fightStartTime = null;
   pendingArmorDamage = null; // Clear any hanging buffer
+  stateSources = {};
 
   // 4. CLEAR STORAGE
   localStorage.removeItem("wakfu_live_combat_state");
@@ -361,9 +304,7 @@ function getFightDuration() {
   const diff = end - fightStartTime;
   const minutes = Math.floor(diff / 60000);
   const seconds = Math.floor((diff % 60000) / 1000);
-  return `${minutes.toString().padStart(2, "0")}:${seconds
-    .toString()
-    .padStart(2, "0")}`;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function mergeSummonData(summon, master) {
@@ -496,29 +437,11 @@ function normalizeElement(el) {
     luz: "Light",
     neutro: "Neutral",
   };
-  return (
-    elementMap[low] ||
-    (["Fire", "Water", "Earth", "Air", "Stasis", "Light", "Neutral"].includes(
-      el
-    )
-      ? el
-      : null)
-  );
+  return elementMap[low] || (["Fire", "Water", "Earth", "Air", "Stasis", "Light", "Neutral"].includes(el) ? el : null);
 }
 
 // Entities that should NEVER own subsequent damage procs
-const nonCombatantList = [
-  "Gobgob",
-  "Beacon",
-  "Balise",
-  "Standard-Bearing Puppet",
-  "Microbot",
-  "Cybot",
-  "Dial",
-  "Cadran",
-  "Coney",
-  "Lapino",
-];
+const nonCombatantList = ["Gobgob", "Beacon", "Balise", "Standard-Bearing Puppet", "Microbot", "Cybot", "Dial", "Cadran", "Coney", "Lapino"];
 
 // Helper for elements normalization
 const elementMap = {
@@ -541,9 +464,7 @@ const elementMap = {
 
 // Helper to find a player by their detected class
 function findFirstPlayerByClass(targetClass) {
-  return Object.keys(playerClasses).find(
-    (name) => playerClasses[name] === targetClass
-  );
+  return Object.keys(playerClasses).find((name) => playerClasses[name] === targetClass);
 }
 
 // Helper to ensure damage goes to the rightful class owner
@@ -559,15 +480,7 @@ function getSignatureCaster(spellName, defaultCaster) {
   return classOwner || defaultCaster;
 }
 
-function routeCombatData(
-  unit,
-  armorUnits,
-  sign,
-  caster,
-  spell,
-  amount,
-  element
-) {
+function routeCombatData(unit, armorUnits, sign, caster, spell, amount, element) {
   if (unit.match(new RegExp(armorUnits, "i"))) {
     updateCombatData(armorData, caster, spell, amount, null);
   } else if (sign === "+") {
@@ -592,11 +505,8 @@ function isPlayerAlly(p, contextClasses = null, contextOverrides = null) {
 
   // 3. Enemy Families (Generic Logic)
   if (typeof wakfuEnemies !== "undefined") {
-    const isEnemy = wakfuEnemies.some((fam) =>
-      lowerName.includes(fam.toLowerCase())
-    );
-    if (isEnemy || name.includes("Punchy") || name.includes("Papas"))
-      return false;
+    const isEnemy = wakfuEnemies.some((fam) => lowerName.includes(fam.toLowerCase()));
+    if (isEnemy || name.includes("Punchy") || name.includes("Papas")) return false;
   }
 
   // 4. Detected Player Classes (Ally)
@@ -604,8 +514,7 @@ function isPlayerAlly(p, contextClasses = null, contextOverrides = null) {
   if (classesMap[name]) return true;
 
   // 5. Known Summons (Ally)
-  if (typeof allySummons !== "undefined" && allySummons.includes(name))
-    return true;
+  if (typeof allySummons !== "undefined" && allySummons.includes(name)) return true;
 
   // 6. Default Fallback -> Enemy
   return false;
@@ -614,6 +523,7 @@ function isPlayerAlly(p, contextClasses = null, contextOverrides = null) {
 document.getElementById("resetBtn").addEventListener("click", performReset);
 
 let monsterLookup = {};
+let stateSources = {}; // Maps State Name -> Player Name
 
 function initMonsterDatabase() {
   if (typeof wakfuMonsters === "undefined") return;
@@ -685,15 +595,7 @@ function viewHistory(index) {
 
 let permissionStrikeCount = 0; // Counter for transient errors
 
-const LOOT_KEYWORDS = [
-  "picked up",
-  "ramassé",
-  "obtenu",
-  "recogido",
-  "obtenido",
-  "apanhou",
-  "obteve",
-];
+const LOOT_KEYWORDS = ["picked up", "ramassé", "obtenu", "recogido", "obtenido", "apanhou", "obteve"];
 
 async function parseFile() {
   const now = Date.now();
@@ -746,18 +648,14 @@ async function parseFile() {
       console.warn("[Nexus] File locked by game (busy). Retrying next tick...");
     }
     // Handle actual Permission Loss or File Deletion
-    else if (
-      err.name === "NotFoundError" ||
-      err.message.includes("permission")
-    ) {
+    else if (err.name === "NotFoundError" || err.message.includes("permission")) {
       permissionStrikeCount++;
       console.error(`[Nexus] Read Error (${permissionStrikeCount}/10):`, err);
 
       // Only stop if it fails 10 times consecutively (10 seconds of failure)
       if (permissionStrikeCount >= 10) {
         console.error("[Nexus] Persistent file error. Stopping reader.");
-        if (typeof parseIntervalId !== "undefined")
-          clearInterval(parseIntervalId);
+        if (typeof parseIntervalId !== "undefined") clearInterval(parseIntervalId);
 
         // Show Reconnect UI
         document.getElementById("setup-panel").style.display = "block";
@@ -786,9 +684,7 @@ function processLine(line) {
     { tag: "[registro de lutas]", msg: "a luta terminou" },
   ];
 
-  const battleJustFinished = systemEndPattens.some(
-    (p) => lineLower.includes(p.tag) && lineLower.includes(p.msg)
-  );
+  const battleJustFinished = systemEndPattens.some((p) => lineLower.includes(p.tag) && lineLower.includes(p.msg));
 
   if (typeof processSessionLog === "function") {
     processSessionLog(line);
@@ -809,11 +705,7 @@ function processLine(line) {
 
   try {
     const isLoot = LOOT_KEYWORDS.some((kw) => lineLower.includes(kw));
-    const isCombat =
-      lineLower.includes("[fight log]") ||
-      lineLower.includes("[information (combat)]") ||
-      lineLower.includes("[información (combate)]") ||
-      lineLower.includes("[registro de lutas]");
+    const isCombat = lineLower.includes("[fight log]") || lineLower.includes("[information (combat)]") || lineLower.includes("[información (combate)]") || lineLower.includes("[registro de lutas]");
 
     if (isLoot) {
       processItemLog(line);
@@ -830,8 +722,7 @@ function processLine(line) {
 }
 
 function saveLiveCombatState() {
-  if (Object.keys(fightData).length === 0 && Object.keys(healData).length === 0)
-    return;
+  if (Object.keys(fightData).length === 0 && Object.keys(healData).length === 0) return;
 
   const state = {
     fightData,
