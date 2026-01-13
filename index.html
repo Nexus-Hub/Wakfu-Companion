@@ -13,15 +13,11 @@
       <div id="setup-panel">
         <div class="drop-zone" id="drop-zone">
           <h3>DRAG 'wakfu_chat.log' HERE</h3>
-          <p style="color: #aaa; margin-bottom: 5px">
-            Default Path (Copy & Paste in File Explorer):
-          </p>
+          <p style="color: #aaa; margin-bottom: 5px">Default Path (Copy & Paste in File Explorer):</p>
 
           <!-- Cleaned Path Container -->
           <div class="path-container">
-            <code id="log-path" class="log-path-code"
-              >%AppData%\zaap\gamesLogs\wakfu\logs\</code
-            >
+            <code id="log-path" class="log-path-code">%AppData%\zaap\gamesLogs\wakfu\logs\</code>
             <button id="copy-path-btn" class="copy-path-btn">COPY</button>
           </div>
           <p>Drag the file directly from your folder to start.</p>
@@ -32,16 +28,12 @@
           <p class="prev-file-label">Previous file found:</p>
           <h3 id="prev-filename" class="prev-filename">wakfu-chat.log</h3>
 
-          <button id="reconnect-btn" class="add-track-btn reconnect-action-btn">
-            RECONNECT
-          </button>
+          <button id="reconnect-btn" class="add-track-btn reconnect-action-btn">RECONNECT</button>
 
           <p class="browser-warning">(Browser requires confirmation)</p>
 
           <div class="new-file-wrapper">
-            <button id="new-file-btn" class="new-file-link">
-              Select different file
-            </button>
+            <button id="new-file-btn" class="new-file-link">Select different file</button>
           </div>
         </div>
       </div>
@@ -51,50 +43,20 @@
         <!-- 1. Combat Meter (Damage, Healing & Armor) -->
         <div class="tool-panel">
           <div class="panel-header tab-header">
-            <div
-              class="meter-tab active"
-              id="tab-damage"
-              onclick="switchMeterMode('damage')"
-            >
-              <img
-                src="./assets/img/headers/damage.png"
-                class="tab-icon"
-                onerror="this.style.display='none'"
-              />
+            <div class="meter-tab active" id="tab-damage" onclick="switchMeterMode('damage')">
+              <img src="./assets/img/headers/damage.png" class="tab-icon" onerror="this.style.display='none'" />
               DAMAGE
             </div>
-            <div
-              class="meter-tab"
-              id="tab-healing"
-              onclick="switchMeterMode('healing')"
-            >
-              <img
-                src="./assets/img/headers/healing.png"
-                class="tab-icon"
-                onerror="this.style.display='none'"
-              />
+            <div class="meter-tab" id="tab-healing" onclick="switchMeterMode('healing')">
+              <img src="./assets/img/headers/healing.png" class="tab-icon" onerror="this.style.display='none'" />
               HEALING
             </div>
-            <div
-              class="meter-tab"
-              id="tab-armor"
-              onclick="switchMeterMode('armor')"
-            >
-              <img
-                src="./assets/img/headers/armor.png"
-                class="tab-icon"
-                onerror="this.style.display='none'"
-              />
+            <div class="meter-tab" id="tab-armor" onclick="switchMeterMode('armor')">
+              <img src="./assets/img/headers/armor.png" class="tab-icon" onerror="this.style.display='none'" />
               ARMOR
             </div>
             <!-- PiP Button -->
-            <button
-              class="pip-btn"
-              onclick="togglePiP('meter-split-container', 'Combat Meter')"
-              title="Picture in Picture"
-            >
-              ⧉
-            </button>
+            <button class="pip-btn" onclick="togglePiP('meter-split-container', 'Combat Meter')" title="Picture in Picture">⧉</button>
           </div>
 
           <!-- Controls Area -->
@@ -105,61 +67,17 @@
               </button>
 
               <div id="history-nav" class="history-container">
-                <button
-                  class="hist-btn active"
-                  id="btn-live"
-                  onclick="viewHistory('live')"
-                  title="Current Fight"
-                >
-                  LIVE
-                </button>
+                <button class="hist-btn active" id="btn-live" onclick="viewHistory('live')" title="Current Fight">LIVE</button>
                 <span class="hist-sep">|</span>
-                <button
-                  class="hist-btn disabled"
-                  id="btn-hist-0"
-                  onclick="viewHistory(0)"
-                >
-                  1
-                </button>
-                <button
-                  class="hist-btn disabled"
-                  id="btn-hist-1"
-                  onclick="viewHistory(1)"
-                >
-                  2
-                </button>
-                <button
-                  class="hist-btn disabled"
-                  id="btn-hist-2"
-                  onclick="viewHistory(2)"
-                >
-                  3
-                </button>
-                <button
-                  class="hist-btn disabled"
-                  id="btn-hist-3"
-                  onclick="viewHistory(3)"
-                >
-                  4
-                </button>
-                <button
-                  class="hist-btn disabled"
-                  id="btn-hist-4"
-                  onclick="viewHistory(4)"
-                >
-                  5
-                </button>
+                <button class="hist-btn disabled" id="btn-hist-0" onclick="viewHistory(0)">1</button>
+                <button class="hist-btn disabled" id="btn-hist-1" onclick="viewHistory(1)">2</button>
+                <button class="hist-btn disabled" id="btn-hist-2" onclick="viewHistory(2)">3</button>
+                <button class="hist-btn disabled" id="btn-hist-3" onclick="viewHistory(3)">4</button>
+                <button class="hist-btn disabled" id="btn-hist-4" onclick="viewHistory(4)">5</button>
               </div>
 
               <div style="flex-grow: 1"></div>
-              <button
-                class="export-btn"
-                id="discordBtn"
-                title="Copy Report for Discord"
-                onclick="exportToDiscord()"
-              >
-                📋
-              </button>
+              <button class="export-btn" id="discordBtn" title="Copy Report for Discord" onclick="exportToDiscord()">📋</button>
               <button class="reset-btn" id="resetBtn">RESET</button>
             </div>
           </div>
@@ -170,27 +88,13 @@
             <div class="meter-half">
               <div class="half-header header-allies">
                 <div class="header-title-group">
-                  <img
-                    src="./assets/img/headers/allies.png"
-                    class="header-icon"
-                    onerror="this.style.display='none'"
-                  />
+                  <img src="./assets/img/headers/allies.png" class="header-icon" onerror="this.style.display='none'" />
                   <span>ALLIES</span>
                 </div>
                 <!-- Independent Expand/Collapse Buttons -->
                 <div class="header-btn-group">
-                  <button
-                    class="mini-header-btn"
-                    onclick="modifyExpansion('allies', 'expand')"
-                  >
-                    +
-                  </button>
-                  <button
-                    class="mini-header-btn"
-                    onclick="modifyExpansion('allies', 'collapse')"
-                  >
-                    -
-                  </button>
+                  <button class="mini-header-btn" onclick="modifyExpansion('allies', 'expand')">+</button>
+                  <button class="mini-header-btn" onclick="modifyExpansion('allies', 'collapse')">-</button>
                 </div>
                 <span id="allies-total-val" class="header-total">0</span>
                 <span class="header-percent"></span>
@@ -205,27 +109,13 @@
             <div class="meter-half">
               <div class="half-header header-enemies">
                 <div class="header-title-group">
-                  <img
-                    src="./assets/img/headers/enemies.png"
-                    class="header-icon"
-                    onerror="this.style.display='none'"
-                  />
+                  <img src="./assets/img/headers/enemies.png" class="header-icon" onerror="this.style.display='none'" />
                   <span>ENEMIES</span>
                 </div>
                 <!-- Independent Expand/Collapse Buttons -->
                 <div class="header-btn-group">
-                  <button
-                    class="mini-header-btn"
-                    onclick="modifyExpansion('enemies', 'expand')"
-                  >
-                    +
-                  </button>
-                  <button
-                    class="mini-header-btn"
-                    onclick="modifyExpansion('enemies', 'collapse')"
-                  >
-                    -
-                  </button>
+                  <button class="mini-header-btn" onclick="modifyExpansion('enemies', 'expand')">+</button>
+                  <button class="mini-header-btn" onclick="modifyExpansion('enemies', 'collapse')">-</button>
                 </div>
                 <span id="enemies-total-val" class="header-total">0</span>
                 <span class="header-percent"></span>
@@ -238,154 +128,53 @@
         <!-- 2. Item Tracker -->
         <div class="tool-panel">
           <div class="panel-header">
-            <img
-              src="./assets/img/headers/item_tracker.png"
-              class="header-label-icon"
-              onerror="this.style.display='none'"
-            />
+            <img src="./assets/img/headers/item_tracker.png" class="header-label-icon" onerror="this.style.display='none'" />
             <span class="header-label">Tracker</span>
 
             <!-- NEW: Profession Filters -->
             <div class="tracker-filters">
-              <button
-                class="filter-icon-btn active"
-                id="tf-all"
-                onclick="setTrackerFilter('SHOW_ALL')"
-                title="Show All"
-              >
-                ALL
+              <button class="filter-icon-btn active" id="tf-all" onclick="setTrackerFilter('SHOW_ALL')" title="Show All">ALL</button>
+              <button class="filter-icon-btn" id="tf-farmer" onclick="setTrackerFilter('Farmer')" title="Farmer">
+                <img src="./assets/img/resources/farmer.png" onerror="this.style.display='none'" />
               </button>
-              <button
-                class="filter-icon-btn"
-                id="tf-farmer"
-                onclick="setTrackerFilter('Farmer')"
-                title="Farmer"
-              >
-                <img
-                  src="./assets/img/resources/farmer.png"
-                  onerror="this.style.display='none'"
-                />
+              <button class="filter-icon-btn" id="tf-fisherman" onclick="setTrackerFilter('Fisherman')" title="Fisherman">
+                <img src="./assets/img/resources/fisherman.png" onerror="this.style.display='none'" />
               </button>
-              <button
-                class="filter-icon-btn"
-                id="tf-fisherman"
-                onclick="setTrackerFilter('Fisherman')"
-                title="Fisherman"
-              >
-                <img
-                  src="./assets/img/resources/fisherman.png"
-                  onerror="this.style.display='none'"
-                />
+              <button class="filter-icon-btn" id="tf-herbalist" onclick="setTrackerFilter('Herbalist')" title="Herbalist">
+                <img src="./assets/img/resources/herbalist.png" onerror="this.style.display='none'" />
               </button>
-              <button
-                class="filter-icon-btn"
-                id="tf-herbalist"
-                onclick="setTrackerFilter('Herbalist')"
-                title="Herbalist"
-              >
-                <img
-                  src="./assets/img/resources/herbalist.png"
-                  onerror="this.style.display='none'"
-                />
+              <button class="filter-icon-btn" id="tf-lumberjack" onclick="setTrackerFilter('Lumberjack')" title="Lumberjack">
+                <img src="./assets/img/resources/lumberjack.png" onerror="this.style.display='none'" />
               </button>
-              <button
-                class="filter-icon-btn"
-                id="tf-lumberjack"
-                onclick="setTrackerFilter('Lumberjack')"
-                title="Lumberjack"
-              >
-                <img
-                  src="./assets/img/resources/lumberjack.png"
-                  onerror="this.style.display='none'"
-                />
+              <button class="filter-icon-btn" id="tf-miner" onclick="setTrackerFilter('Miner')" title="Miner">
+                <img src="./assets/img/resources/miner.png" onerror="this.style.display='none'" />
               </button>
-              <button
-                class="filter-icon-btn"
-                id="tf-miner"
-                onclick="setTrackerFilter('Miner')"
-                title="Miner"
-              >
-                <img
-                  src="./assets/img/resources/miner.png"
-                  onerror="this.style.display='none'"
-                />
-              </button>
-              <button
-                class="filter-icon-btn"
-                id="tf-trapper"
-                onclick="setTrackerFilter('Trapper')"
-                title="Trapper"
-              >
-                <img
-                  src="./assets/img/resources/trapper.png"
-                  onerror="this.style.display='none'"
-                />
+              <button class="filter-icon-btn" id="tf-trapper" onclick="setTrackerFilter('Trapper')" title="Trapper">
+                <img src="./assets/img/resources/trapper.png" onerror="this.style.display='none'" />
               </button>
             </div>
 
             <!-- Sort Button (Removed inline margin-left) -->
-            <button
-              class="pip-btn"
-              onclick="sortTrackerItems()"
-              title="Sort by Profession"
-              style="font-size: 0.8rem; font-weight: bold"
-            >
-              ↓
-            </button>
+            <button class="pip-btn" onclick="sortTrackerItems()" title="Sort by Profession" style="font-size: 0.8rem; font-weight: bold">↓</button>
 
-            <button
-              class="pip-btn"
-              id="btn-toggle-totals"
-              onclick="toggleTrackerTotals()"
-              title="Show/Hide Kama Totals"
-              style="margin-right: 5px; font-weight: bold; color: #ffd700"
-            >
-              ₭
-            </button>
+            <button class="pip-btn" id="btn-toggle-totals" onclick="toggleTrackerTotals()" title="Show/Hide Kama Totals" style="margin-right: 5px; font-weight: bold; color: #ffd700">₭</button>
 
             <!-- View Toggle Button -->
-            <button
-              class="pip-btn"
-              id="tracker-view-toggle"
-              onclick="toggleTrackerView()"
-              title="Toggle Grid/List View"
-              style="margin-right: 5px"
-            >
-              ☰
-            </button>
+            <button class="pip-btn" id="tracker-view-toggle" onclick="toggleTrackerView()" title="Toggle Grid/List View" style="margin-right: 5px">☰</button>
 
             <!-- PiP Button -->
-            <button
-              class="pip-btn"
-              onclick="togglePiP('tracker-list', 'Item Tracker')"
-              title="Picture in Picture"
-            >
-              ⧉
-            </button>
+            <button class="pip-btn" onclick="togglePiP('tracker-list', 'Item Tracker')" title="Picture in Picture">⧉</button>
           </div>
           <div class="tracker-controls">
-            <input
-              type="text"
-              id="item-input"
-              list="item-datalist"
-              class="tracker-select"
-              placeholder="Search item..."
-              autocomplete="off"
-            />
+            <input type="text" id="item-input" list="item-datalist" class="tracker-select" placeholder="Search item..." autocomplete="off" />
             <datalist id="item-datalist"></datalist>
-            <button class="add-track-btn" onclick="addTrackedItem()">
-              Add
-            </button>
+            <button class="add-track-btn" onclick="addTrackedItem()">Add</button>
           </div>
           <div id="tracker-list">
             <div class="empty-state">Add items to track...</div>
           </div>
 
-          <div
-            id="tracker-total-footer"
-            class="tracker-footer"
-            style="display: none"
-          >
+          <div id="tracker-total-footer" class="tracker-footer" style="display: none">
             <div class="tf-row">
               <span class="tf-label">Current:</span>
               <span id="tf-val-current" class="tf-val">0 ₭</span>
@@ -402,11 +191,7 @@
         <!-- 3. Chat Translator -->
         <div class="tool-panel">
           <div class="panel-header">
-            <img
-              src="./assets/img/headers/chat.png"
-              class="header-label-icon"
-              onerror="this.style.display='none'"
-            />
+            <img src="./assets/img/headers/chat.png" class="header-label-icon" onerror="this.style.display='none'" />
             <span class="header-label">Chat & Translator</span>
             <button
               id="clearChatBtn"
@@ -418,149 +203,50 @@
                 border: none;
                 cursor: pointer;
                 margin-left: auto;
-              "
-            >
+              ">
               Clear
             </button>
-            <button
-              class="pip-btn"
-              onclick="openQuickTransModal()"
-              title="Quick Translate (EN → ES/FR/PT)"
-              style="margin-right: 5px; font-size: 1.1rem"
-            >
-              🌐
-            </button>
+            <button class="pip-btn" onclick="openQuickTransModal()" title="Quick Translate (EN → ES/FR/PT)" style="margin-right: 5px; font-size: 1.1rem">🌐</button>
             <!-- PiP Button -->
-            <button
-              class="pip-btn"
-              onclick="togglePiP('chat-list', 'Chat')"
-              title="Picture in Picture"
-            >
-              ⧉
-            </button>
+            <button class="pip-btn" onclick="togglePiP('chat-list', 'Chat')" title="Picture in Picture">⧉</button>
           </div>
 
           <div class="trans-toolbar">
             <span class="trans-label">Trans:</span>
-            <button
-              class="lang-btn active"
-              id="btnPT"
-              onclick="toggleLang('pt')"
-            >
-              PT
-            </button>
-            <button
-              class="lang-btn active"
-              id="btnFR"
-              onclick="toggleLang('fr')"
-            >
-              FR
-            </button>
-            <button class="lang-btn" id="btnES" onclick="toggleLang('es')">
-              ES
-            </button>
-            <button
-              class="lang-btn"
-              id="btnOther"
-              onclick="toggleLang('others')"
-            >
-              OTHERS
-            </button>
+            <button class="lang-btn active" id="btnPT" onclick="toggleLang('pt')">PT</button>
+            <button class="lang-btn active" id="btnFR" onclick="toggleLang('fr')">FR</button>
+            <button class="lang-btn" id="btnES" onclick="toggleLang('es')">ES</button>
+            <button class="lang-btn" id="btnOther" onclick="toggleLang('others')">OTHERS</button>
 
             <div class="chat-search-inline">
-              <input
-                type="text"
-                id="chat-text-filter"
-                placeholder="Filter..."
-                oninput="onChatSearchInput(this.value)"
-              />
-              <button class="chat-search-clear" onclick="clearChatSearch()">
-                ×
-              </button>
+              <input type="text" id="chat-text-filter" placeholder="Filter..." oninput="onChatSearchInput(this.value)" />
+              <button class="chat-search-clear" onclick="clearChatSearch()">×</button>
             </div>
 
-            <button
-              class="lang-btn master-on"
-              id="btnMaster"
-              onclick="toggleMasterSwitch()"
-            >
-              ENABLED
-            </button>
+            <button class="lang-btn master-on" id="btnMaster" onclick="toggleMasterSwitch()">ENABLED</button>
           </div>
 
           <div id="chat-list">
             <div class="empty-state">Waiting for chat logs...</div>
           </div>
 
-          <button
-            id="chat-scroll-btn"
-            class="scroll-bottom-btn"
-            onclick="scrollToChatBottom()"
-          >
-            ↓
-          </button>
+          <button id="chat-scroll-btn" class="scroll-bottom-btn" onclick="scrollToChatBottom()">↓</button>
 
           <div class="chat-filters">
-            <button
-              class="filter-btn active"
-              id="filterALL"
-              onclick="setChatFilter('all')"
-            >
-              CHAT
-            </button>
-            <button
-              class="filter-btn"
-              id="filterLOGS"
-              onclick="setChatFilter('logs')"
-            >
-              LOGS
-            </button>
-            <button
-              class="filter-btn"
-              id="filterGROUP"
-              onclick="setChatFilter('group')"
-            >
-              GROUP
-            </button>
-            <button
-              class="filter-btn"
-              id="filterGUILD"
-              onclick="setChatFilter('guild')"
-            >
-              GUILD
-            </button>
-            <button
-              class="filter-btn"
-              id="filterRECRUIT"
-              onclick="setChatFilter('recruitment')"
-            >
-              RECRUITMENT
-            </button>
-            <button
-              class="filter-btn"
-              id="filterCOMM"
-              onclick="setChatFilter('community')"
-            >
-              COMMUNITY
-            </button>
-            <button
-              class="filter-btn"
-              id="filterTRADE"
-              onclick="setChatFilter('trade')"
-            >
-              TRADE
-            </button>
+            <button class="filter-btn active" id="filterALL" onclick="setChatFilter('all')">CHAT</button>
+            <button class="filter-btn" id="filterLOGS" onclick="setChatFilter('logs')">LOGS</button>
+            <button class="filter-btn" id="filterGROUP" onclick="setChatFilter('group')">GROUP</button>
+            <button class="filter-btn" id="filterGUILD" onclick="setChatFilter('guild')">GUILD</button>
+            <button class="filter-btn" id="filterRECRUIT" onclick="setChatFilter('recruitment')">RECRUITMENT</button>
+            <button class="filter-btn" id="filterCOMM" onclick="setChatFilter('community')">COMMUNITY</button>
+            <button class="filter-btn" id="filterTRADE" onclick="setChatFilter('trade')">TRADE</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Quick Chat Translator Floating Window -->
-    <div
-      id="quick-trans-modal"
-      class="floating-window"
-      style="display: none; left: 50%; top: 20%; transform: translateX(-50%)"
-    >
+    <div id="quick-trans-modal" class="floating-window" style="display: none; left: 50%; top: 20%; transform: translateX(-50%)">
       <!-- Header is now the drag handle -->
       <div class="modal-header draggable-header" id="qt-drag-handle">
         <!-- Icon & Title Group -->
@@ -570,16 +256,9 @@
             align-items: center;
             gap: 10px;
             pointer-events: none;
-          "
-        >
-          <img
-            src="./assets/img/headers/chat.png"
-            style="width: 24px; height: 24px; object-fit: contain"
-            onerror="this.style.display='none'"
-          />
-          <h3 style="margin: 0; color: var(--accent); font-size: 1.1rem">
-            Quick Chat Translator
-          </h3>
+          ">
+          <img src="./assets/img/headers/chat.png" style="width: 24px; height: 24px; object-fit: contain" onerror="this.style.display='none'" />
+          <h3 style="margin: 0; color: var(--accent); font-size: 1.1rem">Quick Chat Translator</h3>
         </div>
 
         <button class="close-modal" onclick="closeQuickTransModal()">×</button>
@@ -587,16 +266,8 @@
 
       <div class="modal-body">
         <div class="input-group">
-          <label
-            >Text (<span id="qt-char-count" style="color: #fff">0</span
-            >/300)</label
-          >
-          <textarea
-            id="qt-input"
-            class="qt-textarea"
-            maxlength="300"
-            placeholder="Type message..."
-          ></textarea>
+          <label>Text (<span id="qt-char-count" style="color: #fff">0</span>/300)</label>
+          <textarea id="qt-input" class="qt-textarea" maxlength="300" placeholder="Type message..."></textarea>
         </div>
 
         <div class="qt-controls">
@@ -610,15 +281,9 @@
             >TRANSLATE:</span
           >
           <div class="qt-lang-group">
-            <button class="qt-lang-btn" onclick="performQuickTrans('es')">
-              ES
-            </button>
-            <button class="qt-lang-btn" onclick="performQuickTrans('fr')">
-              FR
-            </button>
-            <button class="qt-lang-btn" onclick="performQuickTrans('pt')">
-              PT
-            </button>
+            <button class="qt-lang-btn" onclick="performQuickTrans('es')">ES</button>
+            <button class="qt-lang-btn" onclick="performQuickTrans('fr')">FR</button>
+            <button class="qt-lang-btn" onclick="performQuickTrans('pt')">PT</button>
           </div>
         </div>
 
@@ -626,9 +291,7 @@
           <label>Result</label>
           <div class="qt-output-container">
             <div id="qt-output" class="qt-output">...</div>
-            <button class="qt-copy-btn" onclick="copyQuickTrans()" title="Copy">
-              📋
-            </button>
+            <button class="qt-copy-btn" onclick="copyQuickTrans()" title="Copy">📋</button>
           </div>
         </div>
       </div>
@@ -638,34 +301,19 @@
     <div id="professions-sidebar" class="sidebar left-sidebar">
       <div class="sidebar-header">
         <h3>
-          <img
-            src="./assets/img/headers/professions.png"
-            class="sidebar-header-icon"
-            onerror="this.style.display='none'"
-          />
+          <img src="./assets/img/headers/professions.png" class="sidebar-header-icon" onerror="this.style.display='none'" />
           Crafting XP Calculator
         </h3>
-        <button class="close-sidebar-btn" onclick="toggleProfSidebar()">
-          ×
-        </button>
+        <button class="close-sidebar-btn" onclick="toggleProfSidebar()">×</button>
       </div>
 
       <div class="sidebar-content">
         <!-- Selector with Dynamic Icon -->
         <div class="prof-select-group prof-header-group">
           <!-- Image loads blank, src filled by JS -->
-          <img
-            id="prof-logo-img"
-            class="selected-job-icon"
-            src=""
-            alt="Job Icon"
-          />
+          <img id="prof-logo-img" class="selected-job-icon" src="" alt="Job Icon" />
 
-          <select
-            id="profession-select"
-            class="prof-select"
-            onchange="onProfessionChange()"
-          >
+          <select id="profession-select" class="prof-select" onchange="onProfessionChange()">
             <option value="" disabled selected>Select Profession...</option>
           </select>
         </div>
@@ -674,47 +322,24 @@
         <div class="prof-levels">
           <div class="prof-level-input-group" style="flex: 0.8">
             <label class="prof-level-label">Base XP</label>
-            <input
-              type="number"
-              id="prof-base-exp"
-              class="prof-level-input"
-              min="1"
-            />
+            <input type="number" id="prof-base-exp" class="prof-level-input" min="1" />
           </div>
           <div class="prof-level-input-group">
             <label class="prof-level-label">Start</label>
-            <input
-              type="number"
-              id="prof-current-lvl"
-              class="prof-level-input"
-              min="0"
-              max="159"
-              value="0"
-            />
+            <input type="number" id="prof-current-lvl" class="prof-level-input" min="0" max="159" value="0" />
           </div>
           <div class="prof-level-input-group">
             <label class="prof-level-label">Target</label>
-            <input
-              type="number"
-              id="prof-target-lvl"
-              class="prof-level-input"
-              min="1"
-              max="160"
-              value="20"
-            />
+            <input type="number" id="prof-target-lvl" class="prof-level-input" min="1" max="160" value="20" />
           </div>
         </div>
 
         <!-- Calculate Button -->
-        <button class="prof-calc-btn" onclick="calculateProfessionResources()">
-          Calculate Needs
-        </button>
+        <button class="prof-calc-btn" onclick="calculateProfessionResources()">Calculate Needs</button>
 
         <!-- Results -->
         <div id="profession-results-list" class="prof-results">
-          <div class="empty-state" style="font-size: 0.9em; padding: 20px">
-            Select levels to see required resources.
-          </div>
+          <div class="empty-state" style="font-size: 0.9em; padding: 20px">Select levels to see required resources.</div>
         </div>
       </div>
     </div>
@@ -723,10 +348,7 @@
     <div id="info-sidebar" class="sidebar">
       <div class="sidebar-header">
         <h3>
-          <img
-            src="./assets/img/headers/quick_info.png"
-            class="sidebar-header-icon"
-          />
+          <img src="./assets/img/headers/quick_info.png" class="sidebar-header-icon" />
           Quick Info
         </h3>
         <button class="close-sidebar-btn" onclick="toggleSidebar()">×</button>
@@ -737,11 +359,7 @@
         <div class="sidebar-section" id="sec-daily">
           <h4 onclick="toggleSidebarSection('sec-daily')">
             <div class="header-left">
-              <img
-                src="./assets/img/headers/daily_missions.png"
-                class="header-label-icon"
-                onerror="this.style.display='none'"
-              />
+              <img src="./assets/img/headers/daily_missions.png" class="header-label-icon" onerror="this.style.display='none'" />
               Daily Missions
             </div>
             <span class="section-arrow">▼</span>
@@ -762,48 +380,24 @@
 
                 <!-- Row 2: 4 Items -->
                 <div class="route-row">
-                  <span class="route-step" data-tooltip="Lv. 6-20&#10;Lv. 21-35"
-                    >Astrub Sewers</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 6-20&#10;Lv. 21-35">Astrub Sewers</span>
                   <span class="route-arrow">➜</span>
-                  <span
-                    class="route-step"
-                    data-tooltip="Lv. 36-50&#10;Lv. 51-65&#10;Lv. 216-230"
-                    >Ereboria</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 36-50&#10;Lv. 51-65&#10;Lv. 216-230">Ereboria</span>
                   <span class="route-arrow">➜</span>
-                  <span
-                    class="route-step"
-                    data-tooltip="Lv. 66-80&#10;Lv. 126-140&#10;Lv. 156-170&#10;Lv. 186-200"
-                    >Bonta</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 66-80&#10;Lv. 126-140&#10;Lv. 156-170&#10;Lv. 186-200">Bonta</span>
                   <span class="route-arrow">➜</span>
-                  <span
-                    class="route-step"
-                    data-tooltip="Lv. 81-95&#10;Lv. 141-155"
-                    >Brakmar</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 81-95&#10;Lv. 141-155">Brakmar</span>
                 </div>
 
                 <!-- Row 3: 4 Items -->
                 <div class="route-row">
-                  <span
-                    class="route-step"
-                    data-tooltip="Lv. 96-110&#10;Lv. 111-125"
-                    >Ice Floe</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 96-110&#10;Lv. 111-125">Ice Floe</span>
                   <span class="route-arrow">➜</span>
-                  <span class="route-step" data-tooltip="Lv. 171-185"
-                    >Moon</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 171-185">Moon</span>
                   <span class="route-arrow">➜</span>
-                  <span class="route-step" data-tooltip="Lv. 201-215"
-                    >Osamosa</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 201-215">Osamosa</span>
                   <span class="route-arrow">➜</span>
-                  <span class="route-step" data-tooltip="Lv. 231-245"
-                    >Misty Isle</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 231-245">Misty Isle</span>
                 </div>
               </div>
             </div>
@@ -822,30 +416,18 @@
 
                 <!-- Row 2: 3 Items -->
                 <div class="route-row">
-                  <span
-                    class="route-step"
-                    data-tooltip="Lv. 36-50&#10;Lv. 96-110&#10;Lv. 156-170"
-                    >Amakna</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 36-50&#10;Lv. 96-110&#10;Lv. 156-170">Amakna</span>
                   <span class="route-arrow">➜</span>
-                  <span class="route-step" data-tooltip="Lv. 111-125"
-                    >Ice Floe</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 111-125">Ice Floe</span>
                   <span class="route-arrow">➜</span>
-                  <span class="route-step" data-tooltip="Lv. 201-215"
-                    >Osamosa</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 201-215">Osamosa</span>
                 </div>
 
                 <!-- Row 3: 2 Items -->
                 <div class="route-row">
-                  <span class="route-step" data-tooltip="Lv. 215-230"
-                    >Ereboria</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 215-230">Ereboria</span>
                   <span class="route-arrow">➜</span>
-                  <span class="route-step" data-tooltip="Lv. 231-245"
-                    >Misty Isle</span
-                  >
+                  <span class="route-step" data-tooltip="Lv. 231-245">Misty Isle</span>
                 </div>
               </div>
             </div>
@@ -856,11 +438,7 @@
         <div class="sidebar-section" id="sec-relics">
           <h4 onclick="toggleSidebarSection('sec-relics')">
             <div class="header-left">
-              <img
-                src="./assets/img/headers/relic_fragments.png"
-                class="header-label-icon"
-                onerror="this.style.display='none'"
-              />
+              <img src="./assets/img/headers/relic_fragments.png" class="header-label-icon" onerror="this.style.display='none'" />
               Relics & Fragments
             </div>
             <span class="section-arrow">▼</span>
@@ -880,9 +458,7 @@
                 <tr>
                   <td>Koko's Boots</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 36-50"
-                      >Imperfect</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 36-50">Imperfect</span>
                   </td>
                   <td>700</td>
                   <td>Ereboria</td>
@@ -890,9 +466,7 @@
                 <tr>
                   <td>Gelano</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 96-110"
-                      >Solid</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 96-110">Solid</span>
                   </td>
                   <td>800</td>
                   <td>Bilbyza</td>
@@ -900,9 +474,7 @@
                 <tr>
                   <td>Kel'Dwa Ring</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 111-125"
-                      >Durable</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 111-125">Durable</span>
                   </td>
                   <td>1000</td>
                   <td>Wild Beach</td>
@@ -910,9 +482,7 @@
                 <tr>
                   <td>Dazzling Signet</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 156-170"
-                      >Exquisite</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 156-170">Exquisite</span>
                   </td>
                   <td>1000</td>
                   <td>Amakna</td>
@@ -920,9 +490,7 @@
                 <tr>
                   <td>Pierced Boots</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 186-200"
-                      >Eternal</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 186-200">Eternal</span>
                   </td>
                   <td>1250</td>
                   <td>Pandalucia</td>
@@ -930,9 +498,7 @@
                 <tr>
                   <td>Last Ring</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 201-215"
-                      >Divine</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 201-215">Divine</span>
                   </td>
                   <td>1800</td>
                   <td>Shhhudoku</td>
@@ -940,9 +506,7 @@
                 <tr>
                   <td>Ghast's Belt</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 216-230"
-                      >Infernal</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 216-230">Infernal</span>
                   </td>
                   <td>1800</td>
                   <td>Ereboria</td>
@@ -950,9 +514,7 @@
                 <tr>
                   <td>The Portal</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 150"
-                      >Jeweler</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 150">Jeweler</span>
                   </td>
                   <td>
                     <span
@@ -966,9 +528,7 @@
                 <tr>
                   <td>Reiem Ring</td>
                   <td>
-                    <span class="relic-tooltip" data-tooltip="Lvl. 231-245"
-                      >Ancestral</span
-                    >
+                    <span class="relic-tooltip" data-tooltip="Lvl. 231-245">Ancestral</span>
                   </td>
                   <td>1800</td>
                   <td>Misty Isle</td>
@@ -981,11 +541,7 @@
         <!-- BMC Footer -->
         <div class="sidebar-footer">
           <a href="https://www.buymeacoffee.com/nexuswow" target="_blank">
-            <img
-              src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
-              alt="Buy Me A Coffee"
-              class="bmc-sidebar-img"
-            />
+            <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" class="bmc-sidebar-img" />
           </a>
         </div>
       </div>
@@ -995,34 +551,20 @@
     <div id="dungeon-sidebar" class="sidebar">
       <div class="sidebar-header">
         <h3>
-          <img
-            src="./assets/img/headers/dungeon_forecast.png"
-            class="sidebar-header-icon"
-            onerror="this.style.display='none'"
-          />
+          <img src="./assets/img/headers/dungeon_forecast.png" class="sidebar-header-icon" onerror="this.style.display='none'" />
           Dungeon Forecast
         </h3>
-        <button class="close-sidebar-btn" onclick="toggleDungeonSidebar()">
-          ×
-        </button>
+        <button class="close-sidebar-btn" onclick="toggleDungeonSidebar()">×</button>
       </div>
 
-      <div
-        class="sidebar-content"
-        style="display: flex; flex-direction: column"
-      >
-        <div
-          class="forecast-main-container"
-          style="flex: 1; display: flex; flex-direction: column; min-height: 0"
-        >
+      <div class="sidebar-content" style="display: flex; flex-direction: column">
+        <div class="forecast-main-container" style="flex: 1; display: flex; flex-direction: column; min-height: 0">
           <!-- Header (Nav + Tabs) -->
           <div id="forecast-header-sticky"></div>
 
           <!-- List -->
           <div id="forecast-list-scrollable">
-            <div style="text-align: center; padding: 20px; color: #888">
-              Loading...
-            </div>
+            <div style="text-align: center; padding: 20px; color: #888">Loading...</div>
           </div>
         </div>
 
@@ -1036,8 +578,7 @@
             font-size: 0.7em;
             color: #666;
             font-style: italic;
-          "
-        >
+          ">
           Using data of Narakia et Vicky Zweistein
         </div>
       </div>
@@ -1045,11 +586,7 @@
       <!-- BMC Footer -->
       <div class="sidebar-footer">
         <a href="https://www.buymeacoffee.com/nexuswow" target="_blank">
-          <img
-            src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
-            alt="Buy Me A Coffee"
-            class="bmc-sidebar-img"
-          />
+          <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" class="bmc-sidebar-img" />
         </a>
       </div>
     </div>
@@ -1071,75 +608,37 @@
 
         <!-- Tracking Label -->
         <span style="color: var(--accent); font-weight: bold">Tracking: </span>
-        <span
-          id="active-filename"
-          style="margin-left: 5px; color: var(--text-muted)"
-          >No File</span
-        >
+        <span id="active-filename" style="margin-left: 5px; color: var(--text-muted)">No File</span>
 
         <!-- Separator -->
         <span class="footer-separator">|</span>
 
         <!-- Daily Timer -->
-        <span
-          id="daily-timer-display"
-          title="Time remaining until Paris Midnight"
-        >
-          <span style="color: var(--accent); font-weight: bold"
-            >Daily Reset in:
-          </span>
-          <span
-            id="daily-val"
-            style="color: var(--text-main); font-family: monospace"
-            >--:--</span
-          >
+        <span id="daily-timer-display" title="Time remaining until Paris Midnight">
+          <span style="color: var(--accent); font-weight: bold">Daily Reset in: </span>
+          <span id="daily-val" style="color: var(--text-main); font-family: monospace">--:--</span>
         </span>
 
         <!-- Separator -->
         <span class="footer-separator">|</span>
 
         <!-- Sidebar Toggles -->
-        <span
-          class="footer-btn"
-          onclick="toggleProfSidebar()"
-          style="margin-right: 10px"
-          >PROFESSIONS</span
-        >
+        <span class="footer-btn" onclick="toggleProfSidebar()" style="margin-right: 10px">PROFESSIONS</span>
 
         <!-- Daily Dungeons Button -->
-        <span
-          class="footer-btn"
-          onclick="toggleDungeonSidebar()"
-          style="margin-right: 10px"
-          >DAILY DUNGEONS</span
-        >
+        <span class="footer-btn" onclick="toggleDungeonSidebar()" style="margin-right: 10px">DAILY DUNGEONS</span>
 
-        <span
-          class="footer-btn"
-          onclick="toggleSidebar()"
-          style="margin-right: 10px"
-          >QUICK INFO</span
-        >
+        <span class="footer-btn" onclick="toggleSidebar()" style="margin-right: 10px">QUICK INFO</span>
 
-        <span class="footer-btn" onclick="toggleSessionWindow()"
-          >SESSION RECAP</span
-        >
+        <span class="footer-btn" onclick="toggleSessionWindow()">SESSION RECAP</span>
       </div>
     </div>
 
     <!-- Session Recap -->
-    <div
-      id="session-window"
-      class="floating-window session-window-init"
-      style="display: none"
-    >
+    <div id="session-window" class="floating-window session-window-init" style="display: none">
       <div class="modal-header draggable-header" id="session-drag-handle">
         <div class="session-header-group">
-          <img
-            src="./assets/img/headers/sessionRecap.png"
-            class="sidebar-header-icon"
-            onerror="this.style.display='none'"
-          />
+          <img src="./assets/img/headers/sessionRecap.png" class="sidebar-header-icon" onerror="this.style.display='none'" />
           <h3>SESSION RECAP</h3>
         </div>
         <button class="close-modal" onclick="toggleSessionWindow()">×</button>
@@ -1149,18 +648,12 @@
         <!-- TIMER SECTION -->
         <div class="session-timer-container">
           <span class="stat-label">Duration:</span>
-          <span id="sess-current-duration" class="stat-val text-accent"
-            >00:00:00</span
-          >
+          <span id="sess-current-duration" class="stat-val text-accent">00:00:00</span>
         </div>
         <!-- XP SECTION -->
         <div class="session-section">
           <div class="session-header-row">
-            <img
-              src="assets/img/headers/xp.png"
-              class="session-icon"
-              onerror="this.style.display='none'"
-            />
+            <img src="assets/img/headers/xp.png" class="session-icon" onerror="this.style.display='none'" />
             <h4>EXPERIENCE</h4>
           </div>
           <div id="session-xp-list">
@@ -1171,11 +664,7 @@
         <!-- KAMAS SECTION -->
         <div class="session-section">
           <div class="session-header-row">
-            <img
-              src="assets/img/headers/kamas.png"
-              class="session-icon"
-              onerror="this.style.display='none'"
-            />
+            <img src="assets/img/headers/kamas.png" class="session-icon" onerror="this.style.display='none'" />
             <h4>KAMAS</h4>
           </div>
           <div class="stat-row">
@@ -1195,29 +684,19 @@
         <!-- CHALLENGES SECTION -->
         <div class="session-section">
           <div class="session-header-row">
-            <img
-              src="assets/img/headers/challenges.png"
-              class="session-icon"
-              onerror="this.style.display='none'"
-            />
+            <img src="assets/img/headers/challenges.png" class="session-icon" onerror="this.style.display='none'" />
             <h4>CHALLENGES</h4>
           </div>
           <div class="stat-row">
             <span class="stat-label">Completed:</span>
-            <span id="sess-challenges-count" class="stat-val text-accent"
-              >0</span
-            >
+            <span id="sess-challenges-count" class="stat-val text-accent">0</span>
           </div>
         </div>
 
         <!-- QUESTS SECTION -->
         <div class="session-section last-section">
           <div class="session-header-row">
-            <img
-              src="assets/img/headers/quest.png"
-              class="session-icon"
-              onerror="this.style.display='none'"
-            />
+            <img src="assets/img/headers/quest.png" class="session-icon" onerror="this.style.display='none'" />
             <h4>QUESTS</h4>
           </div>
           <div class="stat-row">
@@ -1226,12 +705,7 @@
           </div>
         </div>
 
-        <button
-          onclick="resetSessionStats()"
-          class="add-track-btn session-reset-btn"
-        >
-          RESET SESSION
-        </button>
+        <button onclick="resetSessionStats()" class="add-track-btn session-reset-btn">RESET SESSION</button>
       </div>
     </div>
 
@@ -1248,31 +722,18 @@
           <div class="input-row">
             <div class="input-group">
               <label>Current</label>
-              <input
-                type="number"
-                id="modal-input-current"
-                class="t-input modal-field"
-              />
+              <input type="number" id="modal-input-current" class="t-input modal-field" />
             </div>
             <div class="input-group">
               <label>Target</label>
-              <input
-                type="number"
-                id="modal-input-target"
-                class="t-input modal-field"
-              />
+              <input type="number" id="modal-input-target" class="t-input modal-field" />
             </div>
           </div>
 
           <!-- Row 2: Price -->
           <div class="input-group" style="margin-top: 10px">
             <label>Unit Price (Kamas)</label>
-            <input
-              type="number"
-              id="modal-input-price"
-              class="t-input modal-field"
-              placeholder="0"
-            />
+            <input type="number" id="modal-input-price" class="t-input modal-field" placeholder="0" />
           </div>
 
           <!-- Kama Stats Display -->
@@ -1291,9 +752,7 @@
             </div>
           </div>
 
-          <button class="add-track-btn save-btn" id="modal-save-btn">
-            SAVE CHANGES
-          </button>
+          <button class="add-track-btn save-btn" id="modal-save-btn">SAVE CHANGES</button>
           <button
             class="delete-item-btn"
             id="modal-delete-btn"
@@ -1304,8 +763,7 @@
               background: none;
               border: none;
               text-decoration: underline;
-            "
-          >
+            ">
             Remove Item
           </button>
         </div>
@@ -1343,7 +801,6 @@
       data-color="#5F7FFF"
       data-position="Right"
       data-x_margin="10"
-      data-y_margin="10"
-    ></script>
+      data-y_margin="10"></script>
   </body>
 </html>
