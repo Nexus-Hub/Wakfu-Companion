@@ -1,12 +1,12 @@
 // CHAT MODULE: Handles Chat, Logs, Formatting, and Translation
 const chatListEl = document.getElementById("chat-list");
 const scrollBtn = document.getElementById("chat-scroll-btn");
+const REGEX_WAIT = /wait (\d+) seconds/i; // Matches: "You must wait 87 seconds..."
 
 if (chatListEl && scrollBtn) {
   chatListEl.addEventListener("scroll", () => {
     // Show button if scrolled up more than 100px
-    const distanceToBottom =
-      chatListEl.scrollHeight - chatListEl.scrollTop - chatListEl.clientHeight;
+    const distanceToBottom = chatListEl.scrollHeight - chatListEl.scrollTop - chatListEl.clientHeight;
     if (distanceToBottom > 150) {
       scrollBtn.classList.add("visible");
     } else {
@@ -87,11 +87,16 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   const list = document.getElementById("chat-list");
 
   // 1. SMART SCROLL: Check if we are at the bottom BEFORE adding new content
-  const isAtBottom =
-    list.scrollHeight - list.scrollTop - list.clientHeight <= 50;
+  const isAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= 50;
 
   const emptyState = list.querySelector(".empty-state");
   if (emptyState) list.innerHTML = "";
+
+  // Check raw message for the specific system warning
+  const waitMatch = message.match(REGEX_WAIT);
+  if (waitMatch) {
+    triggerChatCooldown(parseInt(waitMatch[1], 10));
+  }
 
   // Pruning
   while (list.children.length >= MAX_CHAT_HISTORY) {
@@ -119,21 +124,14 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
   } else {
     if (category === currentChatFilter) {
       isVisible = true;
-    } else if (
-      (category === "vicinity" || category === "private") &&
-      category !== "logs"
-    ) {
+    } else if ((category === "vicinity" || category === "private") && category !== "logs") {
       isVisible = true;
     } else {
       isVisible = false;
     }
   }
 
-  if (
-    isVisible &&
-    typeof currentChatSearchTerm !== "undefined" &&
-    currentChatSearchTerm.trim() !== ""
-  ) {
+  if (isVisible && typeof currentChatSearchTerm !== "undefined" && currentChatSearchTerm.trim() !== "") {
     if (!div._searchText.includes(currentChatSearchTerm)) isVisible = false;
   }
 
@@ -145,17 +143,11 @@ function addChatMessage(time, channel, author, message, skipAuto = false) {
 
   if (lowerChan.includes("game log")) {
     displayMessage = formatGameLog(message);
-  } else if (
-    lowerChan.includes("fight log") ||
-    lowerChan.includes("combat") ||
-    lowerChan.includes("lutas") ||
-    lowerChan.includes("information")
-  ) {
+  } else if (lowerChan.includes("fight log") || lowerChan.includes("combat") || lowerChan.includes("lutas") || lowerChan.includes("information")) {
     displayMessage = formatFightLog(message);
   }
 
-  const transId =
-    "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+  const transId = "trans-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
   const channelTag = `[${channel}]`;
 
   div.innerHTML = `
@@ -205,9 +197,7 @@ document.getElementById("chat-list").addEventListener("click", (e) => {
 
 function setChatFilter(filter) {
   currentChatFilter = filter;
-  document
-    .querySelectorAll(".filter-btn")
-    .forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".filter-btn").forEach((btn) => btn.classList.remove("active"));
 
   let btnId = "filterALL";
   if (filter !== "all") {
@@ -226,9 +216,7 @@ function setChatFilter(filter) {
 function refreshChatVisibility() {
   const list = document.getElementById("chat-list");
   const messages = list.children; // Live collection
-  const isSearchActive =
-    typeof currentChatSearchTerm !== "undefined" &&
-    currentChatSearchTerm.trim() !== "";
+  const isSearchActive = typeof currentChatSearchTerm !== "undefined" && currentChatSearchTerm.trim() !== "";
 
   // Batch class updates
   for (let i = 0; i < messages.length; i++) {
@@ -245,8 +233,7 @@ function refreshChatVisibility() {
     } else {
       const isExact = category === currentChatFilter;
       const isExc = category === "vicinity" || category === "private";
-      if (!isExact && (!isExc || currentChatFilter === "logs"))
-        isVisible = false;
+      if (!isExact && (!isExc || currentChatFilter === "logs")) isVisible = false;
     }
 
     if (isVisible && isSearchActive) {
@@ -281,18 +268,12 @@ function formatGameLog(message) {
 
   if (kamaRegex.test(formatted)) {
     isKama = true;
-    formatted = formatted.replace(
-      kamaRegex,
-      '<span class="kama-log">$1</span>$2<span class="kama-log">$3</span>'
-    );
+    formatted = formatted.replace(kamaRegex, '<span class="kama-log">$1</span>$2<span class="kama-log">$3</span>');
   }
 
   if (!isKama && typeof LOOT_KEYWORDS !== "undefined") {
     if (LOOT_KEYWORDS.some((kw) => message.toLowerCase().includes(kw))) {
-      formatted = formatted.replace(
-        /(?<!>)\b(\d+(?:[.,]\d+)*\s*x?)\b(?![^<]*<\/span>)/g,
-        '<span class="loot-log">$1</span>'
-      );
+      formatted = formatted.replace(/(?<!>)\b(\d+(?:[.,]\d+)*\s*x?)\b(?![^<]*<\/span>)/g, '<span class="loot-log">$1</span>');
     }
   }
 
@@ -313,28 +294,19 @@ function formatFightLog(message) {
   };
 
   // 1. Elemental Resistance
-  formatted = formatted.replace(
-    /(?<!>)([-+]?\s?[\d,.]+)(\s+Elemental Resistance)/gi,
-    (match, numberStr) => {
-      let cleanNum = numberStr.trim();
-      const val = parseFloat(cleanNum.replace(/[,.\s]/g, ""));
-      if (val > 0 && !cleanNum.includes("+") && !cleanNum.includes("-")) {
-        cleanNum = "+" + cleanNum;
-      }
-      return `<span style="font-weight:bold; color:#ccc;">${cleanNum}</span> <img src="./assets/img/elements/Elemental_Resistance.png" class="element-icon" alt="Res" title="Elemental Resistance">`;
+  formatted = formatted.replace(/(?<!>)([-+]?\s?[\d,.]+)(\s+Elemental Resistance)/gi, (match, numberStr) => {
+    let cleanNum = numberStr.trim();
+    const val = parseFloat(cleanNum.replace(/[,.\s]/g, ""));
+    if (val > 0 && !cleanNum.includes("+") && !cleanNum.includes("-")) {
+      cleanNum = "+" + cleanNum;
     }
-  );
+    return `<span style="font-weight:bold; color:#ccc;">${cleanNum}</span> <img src="./assets/img/elements/Elemental_Resistance.png" class="element-icon" alt="Res" title="Elemental Resistance">`;
+  });
 
   // 2. Full Elemental Damage
   for (const [pattern, data] of Object.entries(elementMap)) {
-    const regex = new RegExp(
-      `(-\\s?[\\d,.]+)\\s+(HP|PV|PdV)\\s+\\(\\s*((?:${pattern}))\\s*\\)`,
-      "gi"
-    );
-    formatted = formatted.replace(
-      regex,
-      `<span class="${data.cls}">$1 $2</span> <span class="copy-only">($3)</span><img src="./assets/img/elements/${data.icon}" class="element-icon" alt="">`
-    );
+    const regex = new RegExp(`(-\\s?[\\d,.]+)\\s+(HP|PV|PdV)\\s+\\(\\s*((?:${pattern}))\\s*\\)`, "gi");
+    formatted = formatted.replace(regex, `<span class="${data.cls}">$1 $2</span> <span class="copy-only">($3)</span><img src="./assets/img/elements/${data.icon}" class="element-icon" alt="">`);
   }
 
   // 3. Neutral Damage
@@ -346,23 +318,12 @@ function formatFightLog(message) {
   // 4. Standalone Elements
   for (const [pattern, data] of Object.entries(elementMap)) {
     const regex = new RegExp(`(?<!>)\\(\\s*((?:${pattern}))\\s*\\)`, "gi");
-    formatted = formatted.replace(
-      regex,
-      `<span class="copy-only">($1)</span><img src="./assets/img/elements/${data.icon}" class="element-icon" alt="">`
-    );
+    formatted = formatted.replace(regex, `<span class="copy-only">($1)</span><img src="./assets/img/elements/${data.icon}" class="element-icon" alt="">`);
   }
 
   // 5. Level/XP Numbers
-  if (
-    lower.includes("level") ||
-    lower.includes("lvl") ||
-    lower.includes("niveau") ||
-    lower.includes("nivel")
-  ) {
-    formatted = formatted.replace(
-      /(?<!>)(?:\+|-)?\b\d+(?:[.,]\d+)*\b(?![^<]*>)/g,
-      '<span class="game-log-number">$&</span>'
-    );
+  if (lower.includes("level") || lower.includes("lvl") || lower.includes("niveau") || lower.includes("nivel")) {
+    formatted = formatted.replace(/(?<!>)(?:\+|-)?\b\d+(?:[.,]\d+)*\b(?![^<]*>)/g, '<span class="game-log-number">$&</span>');
   }
 
   // 6. Parentheses Bolding
@@ -387,8 +348,7 @@ async function processTranslationQueue() {
   }
 
   if (!item.isManual) {
-    const anyLangSelected =
-      transConfig.pt || transConfig.fr || transConfig.es || transConfig.others;
+    const anyLangSelected = transConfig.pt || transConfig.fr || transConfig.es || transConfig.others;
     if (!anyLangSelected) {
       translationQueue.shift();
       setTimeout(processTranslationQueue, 50);
@@ -410,20 +370,13 @@ async function processTranslationQueue() {
         if (item.isManual) {
           show = true;
         } else {
-          if (transConfig.pt && (l === "pt" || l.startsWith("pt-")))
-            show = true;
-          else if (transConfig.fr && (l === "fr" || l.startsWith("fr-")))
-            show = true;
-          else if (transConfig.es && (l === "es" || l.startsWith("es-")))
-            show = true;
+          if (transConfig.pt && (l === "pt" || l.startsWith("pt-"))) show = true;
+          else if (transConfig.fr && (l === "fr" || l.startsWith("fr-"))) show = true;
+          else if (transConfig.es && (l === "es" || l.startsWith("es-"))) show = true;
           else if (transConfig.others && !l.startsWith("en")) show = true;
 
           // Cross-check PT/ES similarity
-          if (
-            show &&
-            ((transConfig.pt && !transConfig.es && l.startsWith("es")) ||
-              (transConfig.es && !transConfig.pt && l.startsWith("pt")))
-          ) {
+          if (show && ((transConfig.pt && !transConfig.es && l.startsWith("es")) || (transConfig.es && !transConfig.pt && l.startsWith("pt")))) {
             const scores = checkLanguageFeatures(item.text);
             if (transConfig.pt && scores.es > scores.pt) show = false;
             if (transConfig.es && scores.pt > scores.es) show = false;
@@ -446,9 +399,7 @@ async function processTranslationQueue() {
 }
 
 async function fetchTranslation(text) {
-  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(
-    text
-  )}`;
+  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(text)}`;
   try {
     const response = await fetch(sourceUrl);
     const data = await response.json();
@@ -480,55 +431,15 @@ function getCategoryFromChannel(channelName) {
     lower.includes("erro")
   )
     return "logs";
-  if (
-    lower.includes("vicinity") ||
-    lower.includes("proximit") ||
-    lower.includes("local") ||
-    lower.includes("vizinhança")
-  )
-    return "vicinity";
-  if (
-    lower.includes("private") ||
-    lower.includes("whisper") ||
-    lower.includes("priv") ||
-    lower.includes("sussurro")
-  )
-    return "private";
-  if (
-    lower.includes("group") ||
-    lower.includes("groupe") ||
-    lower.includes("grupo")
-  )
-    return "group";
-  if (
-    lower.includes("guild") ||
-    lower.includes("guilde") ||
-    lower.includes("gremio")
-  )
-    return "guild";
-  if (
-    lower.includes("trade") ||
-    lower.includes("commerce") ||
-    lower.includes("comercio")
-  )
-    return "trade";
-  if (
-    lower.includes("community") ||
-    lower.includes("communaut") ||
-    lower.includes("comunidad") ||
-    lower.includes("comunidade")
-  )
-    return "community";
-  if (
-    lower.includes("recruitment") ||
-    lower.includes("recrutement") ||
-    lower.includes("reclutamiento") ||
-    lower.includes("recrutamento")
-  )
-    return "recruitment";
+  if (lower.includes("vicinity") || lower.includes("proximit") || lower.includes("local") || lower.includes("vizinhança")) return "vicinity";
+  if (lower.includes("private") || lower.includes("whisper") || lower.includes("priv") || lower.includes("sussurro")) return "private";
+  if (lower.includes("group") || lower.includes("groupe") || lower.includes("grupo")) return "group";
+  if (lower.includes("guild") || lower.includes("guilde") || lower.includes("gremio")) return "guild";
+  if (lower.includes("trade") || lower.includes("commerce") || lower.includes("comercio")) return "trade";
+  if (lower.includes("community") || lower.includes("communaut") || lower.includes("comunidad") || lower.includes("comunidade")) return "community";
+  if (lower.includes("recruitment") || lower.includes("recrutement") || lower.includes("reclutamiento") || lower.includes("recrutamento")) return "recruitment";
   if (lower.includes("politic")) return "politics";
-  if (lower.includes("pvp") || lower.includes("jcj") || lower.includes("camp"))
-    return "pvp";
+  if (lower.includes("pvp") || lower.includes("jcj") || lower.includes("camp")) return "pvp";
   return "other";
 }
 
@@ -579,9 +490,7 @@ async function performQuickTrans(targetLang) {
   outputEl.textContent = "Translating...";
   outputEl.style.color = "#888";
 
-  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(
-    text
-  )}`;
+  const sourceUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
 
   try {
     const response = await fetch(sourceUrl);
@@ -607,12 +516,7 @@ function copyQuickTrans() {
   const text = outputEl.textContent;
   const btn = document.querySelector(".qt-copy-btn");
 
-  if (
-    text &&
-    text !== "..." &&
-    text !== "Translating..." &&
-    text !== "Network Error."
-  ) {
+  if (text && text !== "..." && text !== "Translating..." && text !== "Network Error.") {
     navigator.clipboard.writeText(text).then(() => {
       const originalIcon = btn.textContent;
       btn.textContent = "✅";
@@ -642,18 +546,10 @@ function toggleMasterSwitch() {
 }
 
 function updateLangButtons() {
-  document
-    .getElementById("btnPT")
-    .classList.toggle("active", transConfig.pt && transConfig.enabled);
-  document
-    .getElementById("btnFR")
-    .classList.toggle("active", transConfig.fr && transConfig.enabled);
-  document
-    .getElementById("btnES")
-    .classList.toggle("active", transConfig.es && transConfig.enabled);
-  document
-    .getElementById("btnOther")
-    .classList.toggle("active", transConfig.others && transConfig.enabled);
+  document.getElementById("btnPT").classList.toggle("active", transConfig.pt && transConfig.enabled);
+  document.getElementById("btnFR").classList.toggle("active", transConfig.fr && transConfig.enabled);
+  document.getElementById("btnES").classList.toggle("active", transConfig.es && transConfig.enabled);
+  document.getElementById("btnOther").classList.toggle("active", transConfig.others && transConfig.enabled);
 
   const btnMaster = document.getElementById("btnMaster");
   if (transConfig.enabled) {
@@ -755,4 +651,42 @@ function checkLanguageFeatures(text) {
   });
 
   return { es: esScore, pt: ptScore };
+}
+
+function triggerChatCooldown(seconds) {
+  const container = document.getElementById("chat-cooldown-container");
+  if (!container) return;
+
+  // Limit to 2 clocks
+  if (container.children.length >= 2) {
+    // Remove the one closest to finishing (first one usually) or just the top one
+    container.removeChild(container.firstElementChild);
+  }
+
+  const pill = document.createElement("div");
+  pill.className = "cooldown-pill";
+
+  // Unique ID for this timer
+  const timerId = Date.now() + Math.random();
+
+  // Initial HTML
+  pill.innerHTML = `<span class="cooldown-icon">⏱</span> <span id="cd-${timerId}">${seconds}s</span>`;
+  container.appendChild(pill);
+
+  let remaining = seconds;
+  const span = document.getElementById(`cd-${timerId}`);
+
+  const interval = setInterval(() => {
+    remaining--;
+    if (span) span.textContent = `${remaining}s`;
+
+    if (remaining <= 0) {
+      clearInterval(interval);
+      // Animate out
+      pill.style.animation = "fadeOutRight 0.3s ease forwards";
+      setTimeout(() => {
+        if (pill.parentNode) pill.parentNode.removeChild(pill);
+      }, 300);
+    }
+  }, 1000);
 }
