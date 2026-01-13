@@ -3621,6 +3621,7 @@ const DUNGEON_LOCATIONS = {
   "Streye Dungeon?": "Dementya",
   "Destroyer Dungeon": "Route of the Dead",
   "Rushu's Palace": "Fallen Souls' Crossing",
+  "Mount Zinit Peak": "Summit",
   Necroworld: "New Sufokian Mine",
   "Foggernaut Dungeon": "New Sufokian Mine",
   "Abyssal Creeper Dungeon": "Ocean Prison",
