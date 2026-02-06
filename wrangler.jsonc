@@ -2,7 +2,7 @@
   "name": "nexus-wakfu-companion",
   "compatibility_date": "2024-09-23",
   "assets": {
-    "directory": ".",
+    "directory": "./public",
   },
   "observability": {
     "enabled": true,
