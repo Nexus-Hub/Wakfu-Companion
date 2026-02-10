@@ -56,7 +56,6 @@ A powerful new floating window to track your grinding efficiency in real-time:
 ### 📅 Utilities Sidebar
 
 - **Crafting XP Calculator:** Calculate exactly how many crafts are needed to reach a target level and generate a resource list.
-- **Dungeon Forecast:** View daily bonuses for "Guild of Hunters" and "Mod'Ule".
 - **Daily Timer:** Live countdown to the server reset (Europe/Paris timezone).
 - **Travel Routes:** Visual pill-based guides for daily quest runs.
 
