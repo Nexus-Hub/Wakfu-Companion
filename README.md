@@ -1,7 +1,6 @@
 # Nexus Wakfu Companion
 
-**Live Tool:** [https://wakfu-companion.vercel.app/](https://wakfu-companion.vercel.app/)  
-**Legacy (Expires Jan 18th):** [https://wakfu-companion-production.up.railway.app/](https://wakfu-companion-production.up.railway.app/)
+**Live Tool:** [https://wakfu-companion.nexuswow.workers.dev/](https://wakfu-companion.nexuswow.workers.dev/)
 
 **Nexus Wakfu Companion** is a high-performance, browser-based utility for _Wakfu_ players. It parses the game's `wakfu-chat.log` file in real-time using the **File System Access API**, providing an interactive overlay for combat statistics, inventory tracking, session tracking, and multilingual chat translation without requiring any local installation or game client modification.
 
