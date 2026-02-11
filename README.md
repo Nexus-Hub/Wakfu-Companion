@@ -79,8 +79,7 @@ A powerful new floating window to track your grinding efficiency in real-time:
 
 ## 🤝 Credits
 
-- **Dungeon Forecast Data:** Sourced from Narakia and Vicky Ƶweistein.
-- **Assets:** Game icons and data compiled from official Wakfu community resources.
+Game icons from [WakAssets](https://github.com/Vertylo/wakassets), and test data compiled from the official Wakfu Discord community server users.
 
 ---
 
